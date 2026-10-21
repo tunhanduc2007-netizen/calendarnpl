@@ -81,7 +81,18 @@
             <path d="M6 6h10"/>
             <path d="M6 10h10"/>
           </svg>
-          <span>Trade Journal</span>
+          <span>Journal</span>
+        </button>
+
+        <!-- Center Mobile Quick Action Button (+ Ghi PnL) -->
+        <button class="nav-item nav-item-quick-add" id="btn-mobile-quick-add" type="button" title="Ghi Lời / Lỗ Ngay">
+          <div class="nav-quick-add-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="20" height="20">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <span>Ghi PnL</span>
         </button>
 
         <button class="nav-item" data-view="insights">
@@ -137,6 +148,10 @@
       <!-- TOP NAVIGATION BAR -->
       <header class="topbar">
         <div class="topbar-left">
+          <div class="mobile-brand-tag" id="mobile-brand-header">
+            <img src="/logo_tnduck.jpg" alt="Logo" class="brand-img-logo-mobile">
+            <span>tnduck <strong style="color: #38bdf8;">PnL</strong></span>
+          </div>
           <div class="topbar-title" id="page-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
               <rect width="18" height="18" x="3" y="4" rx="2"/>
@@ -308,6 +323,7 @@
   <!-- ==================== MODAL: GHI LỜI / LỖ SIÊU ĐƠN GIẢN ==================== -->
   <div class="modal-overlay" id="modal-upload-trade">
     <div class="modal-card modal-quick-pnl">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title">
           <span class="modal-title-icon">⚡</span> Ghi Lời / Lỗ Trong Ngày
@@ -411,6 +427,7 @@
   <!-- ==================== MODAL: DAY DETAILS & QUICK ACTIONS ==================== -->
   <div class="modal-overlay" id="modal-day-detail">
     <div class="modal-card modal-quick-pnl">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title" id="day-detail-title">📅 Chi Tiết Ngày</div>
         <button class="btn-close-modal" data-modal="modal-day-detail">&times;</button>
@@ -436,6 +453,7 @@
   <!-- ==================== MODAL: ACCOUNT SWITCHER & SETTINGS ==================== -->
   <div class="modal-overlay" id="modal-account">
     <div class="modal-card">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title">Tài Khoản Giao Dịch (Trading Accounts)</div>
         <button class="btn-close-modal" data-modal="modal-account">&times;</button>

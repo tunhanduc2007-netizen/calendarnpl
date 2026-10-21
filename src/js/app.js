@@ -41,10 +41,11 @@ class AppController {
     this.bindAccountSettings();
     this.updateAccountBadge();
     this.initCloudSync();
+    this.bindTouchGestures();
 
     // Render Initial View (Calendar)
     this.calendarEngine.render();
-    console.log('My PnL Web App Initialized Cleanly!');
+    console.log('tnduck PnL Web App Initialized Cleanly!');
   }
 
   // ==================== NAVIGATION CONTROLLER ====================
@@ -257,6 +258,19 @@ class AppController {
     const uploadModal = document.getElementById('modal-upload-trade');
     if (uploadBtn && uploadModal) {
       uploadBtn.addEventListener('click', () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('trade-date');
+        if (dateInput && !dateInput.value) dateInput.value = todayStr;
+        uploadModal.classList.add('active');
+        document.getElementById('trade-amount-raw')?.focus();
+      });
+    }
+
+    // Mobile Bottom Nav Center Action Button (+ Ghi PnL)
+    const mobileQuickBtn = document.getElementById('btn-mobile-quick-add');
+    if (mobileQuickBtn && uploadModal) {
+      mobileQuickBtn.addEventListener('click', () => {
+        if (navigator.vibrate) navigator.vibrate(15);
         const todayStr = new Date().toISOString().split('T')[0];
         const dateInput = document.getElementById('trade-date');
         if (dateInput && !dateInput.value) dateInput.value = todayStr;
@@ -761,6 +775,77 @@ class AppController {
     DataService.initSupabaseSync(() => {
       this.refreshCurrentView();
       this.updateAccountBadge();
+    });
+  }
+
+  // ==================== IPHONE GESTURES & HAPTIC TOUCH ====================
+  bindTouchGestures() {
+    const calendarSection = document.getElementById('view-calendar');
+    if (calendarSection) {
+      let startX = 0;
+      let startY = 0;
+
+      calendarSection.addEventListener('touchstart', (e) => {
+        startX = e.changedTouches[0].clientX;
+        startY = e.changedTouches[0].clientY;
+      }, { passive: true });
+
+      calendarSection.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const diffX = endX - startX;
+        const diffY = endY - startY;
+
+        // Only horizontal swipes (diffX > 50px and diffX > 1.5 * diffY)
+        if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+          if (diffX < 0) {
+            // Swipe Left -> Next Month
+            if (navigator.vibrate) navigator.vibrate(12);
+            this.calendarEngine.nextMonth();
+            const monthSelect = document.getElementById('select-month');
+            const yearSelect = document.getElementById('select-year');
+            if (monthSelect) monthSelect.value = this.calendarEngine.currentMonth;
+            if (yearSelect) yearSelect.value = this.calendarEngine.currentYear;
+          } else {
+            // Swipe Right -> Prev Month
+            if (navigator.vibrate) navigator.vibrate(12);
+            this.calendarEngine.prevMonth();
+            const monthSelect = document.getElementById('select-month');
+            const yearSelect = document.getElementById('select-year');
+            if (monthSelect) monthSelect.value = this.calendarEngine.currentMonth;
+            if (yearSelect) yearSelect.value = this.calendarEngine.currentYear;
+          }
+        }
+      }, { passive: true });
+    }
+
+    // iOS Bottom Sheet pull-down-to-dismiss gesture on drag handle
+    document.querySelectorAll('.ios-drag-handle').forEach(handle => {
+      let dragStartY = 0;
+      handle.addEventListener('touchstart', (e) => {
+        dragStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      handle.addEventListener('touchmove', (e) => {
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - dragStartY;
+        if (deltaY > 0) {
+          const card = handle.closest('.modal-card');
+          if (card) card.style.transform = `translateY(${deltaY}px)`;
+        }
+      }, { passive: true });
+
+      handle.addEventListener('touchend', (e) => {
+        const currentY = e.changedTouches[0].clientY;
+        const deltaY = currentY - dragStartY;
+        const modal = handle.closest('.modal-overlay');
+        const card = handle.closest('.modal-card');
+        if (deltaY > 75 && modal) {
+          if (navigator.vibrate) navigator.vibrate(10);
+          modal.classList.remove('active');
+        }
+        if (card) card.style.transform = '';
+      }, { passive: true });
     });
   }
 
