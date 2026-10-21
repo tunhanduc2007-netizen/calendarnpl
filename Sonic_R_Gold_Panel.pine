@@ -1,0 +1,600 @@
+//@version=6
+indicator("Chỉ báo tnduck [Bảng Phân Tích]", shorttitle="Chỉ báo tnduck Flow", overlay=false, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+// ==============================================================================
+// 1. INPUT PARAMETERS (ĐỒNG BỘ VỚI BIỂU ĐỒ TRÊN)
+// ==============================================================================
+grp_sonic   = "=== 1. SONIC R DRAGON & TREND ==="
+len_dragon  = input.int(34, "Dragon Length (EMA 34)", minval=1, group=grp_sonic, display=display.none)
+len_trend1  = input.int(89, "Trend 1 Length (EMA 89 Gold)", minval=1, group=grp_sonic, display=display.none)
+len_trend2  = input.int(200, "Trend 2 Length (EMA 200 Purple)", minval=1, group=grp_sonic, display=display.none)
+
+grp_smc     = "=== 2. CẤU TRÚC SMC & CẢN S/R & PHIÊN ==="
+swing_len   = input.int(5, "Độ nhạy Swing SMC", minval=2, maxval=20, group=grp_smc, display=display.none)
+sr_len      = input.int(4, "Độ nhạy Pivot S/R (Chuẩn Swing SMC)", minval=2, maxval=10, group=grp_smc, display=display.none)
+sr_flip     = input.bool(true, "Cơ Chế S/R Flip (Đổi Cản Khi Bị Phá)", group=grp_smc, display=display.none)
+
+grp_htf     = "=== 3. BỘ LỌC ĐA KHUNG (MTF) & PHIÊN ==="
+filter_h1   = input.bool(true, "Bắt buộc đồng thuận H1", group=grp_htf, display=display.none)
+htf_conf    = input.bool(true, "Chốt nến H1/H4 (Chống Repaint)", group=grp_htf, display=display.none)
+avoid_roll  = input.bool(true, "Tránh giờ giãn Spread (Rollover)", group=grp_htf, display=display.none)
+
+grp_sltp    = "=== 4. QUẢN TRỊ RỦI RO & PHƯƠNG THỨC TP ==="
+tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sltp, display=display.none)
+allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sltp, display=display.none)
+sl_fixed_pts= input.float(4.0, "SL Cố định (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sltp, display=display.none)
+rr_ratio    = input.float(2.0, "Tỷ lệ Risk:Reward (TP/SL)", minval=1.0, step=0.5, group=grp_sltp, display=display.none)
+acc_balance = input.float(100.0, "Số dư tài khoản ($)", minval=10.0, step=10.0, group=grp_sltp, display=display.none)
+risk_pct    = input.float(5.0, "Rủi ro mỗi lệnh (%)", minval=0.1, maxval=20.0, step=0.5, group=grp_sltp, display=display.none)
+contract_sz = input.float(100.0, "Hợp đồng Sàn (1.00 Lot = ? Oz)", minval=1.0, group=grp_sltp, display=display.none)
+min_lot     = input.float(0.01, "Lot tối thiểu của Sàn", minval=0.001, step=0.01, group=grp_sltp, display=display.none)
+lot_step    = input.float(0.01, "Bước nhảy Lot", minval=0.001, step=0.01, group=grp_sltp, display=display.none)
+est_cost_lot= input.float(5.0, "Phí Spread + Comm cho 1.00 Lot ($)", minval=0.0, group=grp_sltp, display=display.none)
+
+grp_ui      = "=== 5. CHẾ ĐỘ HIỂN THỊ ĐIỆN THOẠI & MÁY TÍNH ==="
+ui_mode     = input.string("📱 Điện Thoại (Siêu Gọn)", "Chế Độ Bảng", options=["📱 Điện Thoại (Siêu Gọn)", "💻 Máy Tính (Chi Tiết 7 Bước)", "❌ Tắt Bảng (Chỉ Xem Sóng Vol)"], group=grp_ui, display=display.none)
+table_pos   = input.string("Top Right", "Vị Trí Bảng", options=["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group=grp_ui, display=display.none)
+font_ui_sz  = input.string("Vừa (Dễ Nhìn)", "Cỡ Chữ Bảng Điện Thoại", options=["Vừa (Dễ Nhìn)", "Nhỏ Gọn", "Lớn Rõ"], group=grp_ui, display=display.none)
+
+
+// ==============================================================================
+// 2. TÍNH TOÁN TOÁN HỌC & ĐỒNG BỘ TÍN HIỆU
+// ==============================================================================
+ema_high   = ta.ema(high, len_dragon)
+ema_close  = ta.ema(close, len_dragon)
+ema_low    = ta.ema(low, len_dragon)
+ema_89     = ta.ema(close, len_trend1)
+
+// MTF
+h1_close = htf_conf ? request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off) : request.security(syminfo.tickerid, "60", close, barmerge.gaps_off, barmerge.lookahead_off)
+h1_ema   = htf_conf ? request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off) : request.security(syminfo.tickerid, "60", ta.ema(close, 89), barmerge.gaps_off, barmerge.lookahead_off)
+mtf_h1   = h1_close > h1_ema
+
+h4_close = htf_conf ? request.security(syminfo.tickerid, "240", close[1], barmerge.gaps_off, barmerge.lookahead_off) : request.security(syminfo.tickerid, "240", close, barmerge.gaps_off, barmerge.lookahead_off)
+h4_ema   = htf_conf ? request.security(syminfo.tickerid, "240", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off) : request.security(syminfo.tickerid, "240", ta.ema(close, 89), barmerge.gaps_off, barmerge.lookahead_off)
+mtf_h4   = h4_close > h4_ema
+mtf_m15  = close > ta.ema(close, 89)
+
+// Structure & Sweep
+p_hi = ta.pivothigh(high, swing_len, swing_len)
+p_lo = ta.pivotlow(low, swing_len, swing_len)
+var float last_sh_price = na
+var float last_sl_price = na
+var int   market_trend  = 0
+var bool  sh_broken     = false
+var bool  sl_broken     = false
+
+if not na(p_hi)
+    last_sh_price := p_hi
+    sh_broken     := false
+if not na(p_lo)
+    last_sl_price := p_lo
+    sl_broken     := false
+
+// Sweep
+bool is_bear_sweep = not na(last_sh_price) and not sh_broken and high > last_sh_price and close < last_sh_price
+bool is_bull_sweep = not na(last_sl_price) and not sl_broken and low < last_sl_price and close > last_sl_price
+
+if not na(last_sh_price) and not sh_broken and close > last_sh_price
+    sh_broken    := true
+    market_trend := 1
+if not na(last_sl_price) and not sl_broken and close < last_sl_price
+    sl_broken    := true
+    market_trend := -1
+
+// Đỉnh & Đáy Ngày chuẩn phiên toàn cầu
+bool is_new_day = timeframe.change("D")
+var float day_high_price = na
+var float day_low_price  = na
+
+if is_new_day
+    day_high_price := high
+    day_low_price  := low
+else
+    day_high_price := math.max(nz(day_high_price, high), high)
+    day_low_price  := math.min(nz(day_low_price, low), low)
+
+// S/R
+sr_hi = ta.pivothigh(high, sr_len, sr_len)
+sr_lo = ta.pivotlow(low, sr_len, sr_len)
+var float cur_res_price = na
+var float cur_sup_price = na
+if not na(sr_hi)
+    cur_res_price := sr_hi
+if not na(sr_lo)
+    cur_sup_price := sr_lo
+
+// Xử lý khi Phá Kháng Cự & Thủng Hỗ Trợ (Tránh kẹt dist_res = 0 chặn lệnh Buy)
+if not na(cur_res_price) and close > cur_res_price
+    if sr_flip
+        cur_sup_price := cur_res_price
+    cur_res_price := na
+
+if not na(cur_sup_price) and close < cur_sup_price
+    if sr_flip
+        cur_res_price := cur_sup_price
+    cur_sup_price := na
+
+float active_res = not na(cur_res_price) ? cur_res_price : (not na(day_high_price) and day_high_price > close ? day_high_price : na)
+float active_sup = not na(cur_sup_price) ? cur_sup_price : (not na(day_low_price) and day_low_price < close ? day_low_price : na)
+
+dist_res = not na(active_res) ? math.max(0.0, active_res - close) : na
+dist_sup = not na(active_sup) ? math.max(0.0, close - active_sup) : na
+
+daily_vwap = ta.vwap(hlc3, timeframe.change("D"))
+
+// Nến đảo chiều
+atr_val         = ta.atr(14)
+min_candle_size = nz(atr_val * 0.25, syminfo.mintick * 10)
+body_size       = math.abs(close - open)
+lower_wick      = math.min(open, close) - low
+upper_wick      = high - math.max(open, close)
+
+is_pin_buy      = (high - low) >= min_candle_size and lower_wick >= body_size * 1.2 and lower_wick >= (high - low) * 0.4
+is_engulf_buy   = close > open and close > high[1] and (high - low) >= min_candle_size
+has_rejection_buy = is_pin_buy or is_engulf_buy
+
+is_pin_sell     = (high - low) >= min_candle_size and upper_wick >= body_size * 1.2 and upper_wick >= (high - low) * 0.4
+is_engulf_sell  = close < open and close < low[1] and (high - low) >= min_candle_size
+has_rejection_sell = is_pin_sell or is_engulf_sell
+
+// iFVG detection
+fvg_threshold = nz(atr_val * 0.15, syminfo.mintick * 5)
+bool raw_bull_fvg = (low > high[2]) and (low - high[2] >= fvg_threshold)
+bool raw_bear_fvg = (high < low[2]) and (low[2] - high >= fvg_threshold)
+
+var float prev_bear_fvg_top = na
+var float prev_bull_fvg_bot = na
+if raw_bear_fvg
+    prev_bear_fvg_top := low[2]
+if raw_bull_fvg
+    prev_bull_fvg_bot := high[2]
+
+bool is_bull_ifvg = not na(prev_bear_fvg_top) and close > prev_bear_fvg_top
+bool is_bear_ifvg = not na(prev_bull_fvg_bot) and close < prev_bull_fvg_bot
+if is_bull_ifvg
+    prev_bear_fvg_top := na
+if is_bear_ifvg
+    prev_bull_fvg_bot := na
+
+cross_up_ema = ta.crossover(close, ema_close)
+cross_dn_ema = ta.crossunder(close, ema_close)
+
+has_room_buy  = na(dist_res) or (dist_res >= sl_fixed_pts * 1.1)
+has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
+
+is_spread   = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
+time_allows = not avoid_roll or not is_spread
+
+vol_ma      = ta.sma(volume, 20)
+has_min_vol = na(volume) or (volume >= vol_ma * 0.80)
+vol_surge   = not na(volume) and (volume >= vol_ma * 1.30)
+vol_ratio   = not na(vol_ma) and vol_ma > 0 ? (volume / vol_ma) : 1.0
+
+// Nhận diện Sideway vs Trend
+ema89_slope = math.abs(ema_89 - nz(ema_89[8], ema_89)) / (8.0 * nz(atr_val, 1.0))
+is_sideway  = ema89_slope < 0.085
+
+// Tính POC, VAH, VAL Volume Profile
+var int[]   arr_price_int = array.new_int()
+var float[] arr_vol_bin   = array.new_float()
+var float   cur_poc_val   = na
+var float   cur_vah_val   = na
+var float   cur_val_val   = na
+
+if timeframe.change("D")
+    array.clear(arr_price_int)
+    array.clear(arr_vol_bin)
+
+int p_key = int(math.round(hlc3 / 0.5))
+int found_idx = array.indexof(arr_price_int, p_key)
+float bar_v = nz(volume, 1.0)
+
+if found_idx >= 0
+    array.set(arr_vol_bin, found_idx, array.get(arr_vol_bin, found_idx) + bar_v)
+else
+    array.push(arr_price_int, p_key)
+    array.push(arr_vol_bin, bar_v)
+
+if array.size(arr_vol_bin) > 0
+    int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
+    if best_i >= 0
+        int poc_key = array.get(arr_price_int, best_i)
+        cur_poc_val := float(poc_key) * 0.5
+        
+        // VAH & VAL 70%
+        float total_v  = array.sum(arr_vol_bin)
+        float target_v = total_v * 0.70
+        float acc_v    = array.get(arr_vol_bin, best_i)
+        int up_k       = poc_key
+        int dn_k       = poc_key
+        int loop_guard = 150
+        while acc_v < target_v and loop_guard > 0
+            loop_guard := loop_guard - 1
+            int test_up = up_k + 1
+            int test_dn = dn_k - 1
+            int idx_u   = array.indexof(arr_price_int, test_up)
+            int idx_d   = array.indexof(arr_price_int, test_dn)
+            float vu    = idx_u >= 0 ? array.get(arr_vol_bin, idx_u) : 0.0
+            float vd    = idx_d >= 0 ? array.get(arr_vol_bin, idx_d) : 0.0
+            if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 100 and poc_key - test_dn > 100)
+                break
+            if vu >= vd and vu > 0.0
+                acc_v := acc_v + vu
+                up_k  := test_up
+            else if vd > 0.0
+                acc_v := acc_v + vd
+                dn_k  := test_dn
+            else
+                up_k  := test_up
+                dn_k  := test_dn
+        cur_vah_val := float(up_k) * 0.5
+        cur_val_val := float(dn_k) * 0.5
+
+// 1. Tín hiệu Xu Hướng (Sonic R Chuẩn)
+sonic_buy_raw  = (close > ema_89) and cross_up_ema and low <= ema_high and has_rejection_buy
+sonic_sell_raw = (close < ema_89) and cross_dn_ema and high >= ema_low and has_rejection_sell
+
+trend_buy_trigger  = not is_sideway and sonic_buy_raw and (not filter_h1 or mtf_h1) and has_min_vol and time_allows and has_room_buy
+trend_sell_trigger = not is_sideway and sonic_sell_raw and (not filter_h1 or not mtf_h1) and has_min_vol and time_allows and has_room_sell
+
+// Trạng thái Vùng Giá Trị VAH / VAL
+bool is_above_vah = not na(cur_vah_val) and close > cur_vah_val
+bool is_below_val = not na(cur_val_val) and close < cur_val_val
+
+// 2. Tín hiệu Ping-Pong khi Sideway (Bảo vệ chống bẫy Breakout)
+near_res = (not na(cur_res_price) and high >= cur_res_price - 2.5 and close <= cur_res_price) or (not na(cur_vah_val) and high >= cur_vah_val - 1.5 and close <= cur_vah_val and not is_above_vah)
+near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cur_sup_price) or (not na(cur_val_val) and low <= cur_val_val + 1.5 and close >= cur_val_val and not is_below_val)
+
+ping_sell_trigger = allow_ping and is_sideway and near_res and has_rejection_sell and time_allows and (na(cur_poc_val) or close > cur_poc_val + 2.0)
+ping_buy_trigger  = allow_ping and is_sideway and near_sup and has_rejection_buy and time_allows and (na(cur_poc_val) or close < cur_poc_val - 2.0)
+
+final_buy_trigger  = trend_buy_trigger or ping_buy_trigger
+final_sell_trigger = trend_sell_trigger or ping_sell_trigger
+
+var int last_sig_side = 0
+var int last_sig_bar  = 0
+valid_buy  = final_buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
+valid_sell = final_sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
+
+// ==============================================================================
+// 3. QUẢN LÝ TRẠNG THÁI LỆNH THỰC TẾ & BẢO TOÀN VỐN (BREAKEVEN)
+// ==============================================================================
+var int    pos_side      = 0      // 0: Chờ / Không có lệnh, 1: Đang Buy, -1: Đang Sell
+var float  pos_entry     = na
+var float  pos_sl        = na
+var float  pos_tp        = na
+var int    pos_bar       = 0
+var string trade_status  = "WAIT" // "BUY", "SELL", "TP", "SL", "BE", "WAIT"
+var bool   hit_poc_be    = false
+var int    close_bar     = 0
+
+// Kích hoạt khi có tín hiệu mới
+if valid_buy and pos_side == 0
+    pos_side      := 1
+    pos_entry     := close
+    pos_bar       := bar_index
+    trade_status  := "BUY"
+    last_sig_side := 1
+    last_sig_bar  := bar_index
+    hit_poc_be    := false
+    
+    // SL & TP thông minh
+    if not na(cur_sup_price) and cur_sup_price < close and (close - cur_sup_price <= sl_fixed_pts * 1.5)
+        pos_sl := cur_sup_price - 1.5
+    else
+        pos_sl := close - sl_fixed_pts
+        
+    if tp_mode == "🎯 Tự Động Theo POC & Cản"
+        if not na(cur_poc_val) and cur_poc_val > close + 2.5
+            pos_tp := cur_poc_val
+        else if not na(cur_res_price) and cur_res_price > close + 3.0
+            pos_tp := cur_res_price - 0.5
+        else if not na(day_high_price) and day_high_price > close + 3.0
+            pos_tp := day_high_price - 0.5
+        else
+            pos_tp := close + (math.abs(close - pos_sl) * rr_ratio)
+    else
+        pos_tp := close + (sl_fixed_pts * rr_ratio)
+
+else if valid_sell and pos_side == 0
+    pos_side      := -1
+    pos_entry     := close
+    pos_bar       := bar_index
+    trade_status  := "SELL"
+    last_sig_side := -1
+    last_sig_bar  := bar_index
+    hit_poc_be    := false
+    
+    // SL & TP thông minh
+    if not na(cur_res_price) and cur_res_price > close and (cur_res_price - close <= sl_fixed_pts * 1.5)
+        pos_sl := cur_res_price + 1.5
+    else
+        pos_sl := close + sl_fixed_pts
+        
+    if tp_mode == "🎯 Tự Động Theo POC & Cản"
+        if not na(cur_poc_val) and cur_poc_val < close - 2.5
+            pos_tp := cur_poc_val
+        else if not na(cur_sup_price) and cur_sup_price < close - 3.0
+            pos_tp := cur_sup_price + 0.5
+        else if not na(day_low_price) and day_low_price < close - 3.0
+            pos_tp := day_low_price + 0.5
+        else
+            pos_tp := close - (math.abs(pos_sl - close) * rr_ratio)
+    else
+        pos_tp := close - (sl_fixed_pts * rr_ratio)
+
+// Cập nhật kết quả lệnh: CHỈ KIỂM TRA TRÊN NẾN SAU KHI VÀO LỆNH (bar_index > pos_bar)
+// Tránh lỗi lấy đỉnh/đáy của chính cây nến vào lệnh làm dính SL oan
+if pos_side != 0 and bar_index > pos_bar
+    if pos_side == 1
+        // Kiểm tra đạt TP trước
+        if high >= pos_tp
+            pos_side     := 0
+            trade_status := "TP"
+            close_bar    := bar_index
+            alert("🏆 CHÚC MỪNG: Lệnh BUY đã đạt mục tiêu chốt lời TP (" + str.tostring(pos_tp, "#.#") + ")!", alert.freq_once_per_bar)
+        // Nếu đã chạm POC thì SL đã dời về hòa vốn (BE)
+        else if hit_poc_be and low <= pos_entry
+            pos_side     := 0
+            trade_status := "BE"
+            close_bar    := bar_index
+        else if low <= pos_sl
+            pos_side     := 0
+            trade_status := "SL"
+            close_bar    := bar_index
+        else if not na(cur_poc_val) and high >= cur_poc_val and pos_entry < cur_poc_val
+            if not hit_poc_be
+                alert("🎯 CẢNH BÁO: Giá đã chạm POC (" + str.tostring(cur_poc_val, "#.#") + ")! Hãy dời SL về Entry hòa vốn ngay!", alert.freq_once_per_bar)
+            hit_poc_be   := true
+        else if bar_index - pos_bar > 60
+            pos_side     := 0
+            trade_status := "WAIT"
+            close_bar    := bar_index
+
+    else if pos_side == -1
+        // Kiểm tra đạt TP trước
+        if low <= pos_tp
+            pos_side     := 0
+            trade_status := "TP"
+            close_bar    := bar_index
+            alert("🏆 CHÚC MỪNG: Lệnh SELL đã đạt mục tiêu chốt lời TP (" + str.tostring(pos_tp, "#.#") + ")!", alert.freq_once_per_bar)
+        // Nếu đã chạm POC thì SL đã dời về hòa vốn (BE)
+        else if hit_poc_be and high >= pos_entry
+            pos_side     := 0
+            trade_status := "BE"
+            close_bar    := bar_index
+        else if high >= pos_sl
+            pos_side     := 0
+            trade_status := "SL"
+            close_bar    := bar_index
+        else if not na(cur_poc_val) and low <= cur_poc_val and pos_entry > cur_poc_val
+            if not hit_poc_be
+                alert("🎯 CẢNH BÁO: Giá đã chạm POC (" + str.tostring(cur_poc_val, "#.#") + ")! Hãy dời SL về Entry hòa vốn ngay!", alert.freq_once_per_bar)
+            hit_poc_be   := true
+        else if bar_index - pos_bar > 60
+            pos_side     := 0
+            trade_status := "WAIT"
+            close_bar    := bar_index
+
+// Tự động chuyển về trạng thái Chờ Kèo sau 20 nến để không lưu kết quả cũ mãi
+if pos_side == 0 and (trade_status == "TP" or trade_status == "SL" or trade_status == "BE") and (bar_index - close_bar > 20)
+    trade_status := "WAIT"
+
+// Tính Lot quản trị rủi ro
+float cur_trade_sl_pts = pos_side != 0 ? math.abs(pos_entry - pos_sl) : sl_fixed_pts
+risk_budget   = acc_balance * (risk_pct / 100.0)
+loss_per_lot  = (cur_trade_sl_pts * contract_sz) + est_cost_lot
+raw_lot       = loss_per_lot > 0.0 ? (risk_budget / loss_per_lot) : 0.0
+calc_lot      = math.floor(raw_lot / lot_step) * lot_step
+is_lot_safe   = calc_lot >= min_lot
+final_lot     = is_lot_safe ? calc_lot : 0.0
+
+
+// ==============================================================================
+// 4. BIỂU ĐỒ SÓNG KHỐI LƯỢNG & ĐỘNG LƯỢNG (ẨN SỐ THỪA TRÊN STATUS LINE)
+// ==============================================================================
+hline(1.0, "Khối Lượng Trung Bình (1.0x)", color=color.new(#64748b, 50), linestyle=hline.style_dashed)
+hline(1.3, "Cá Mập Đột Biến (1.3x)", color=color.new(#00f0ff, 40), linestyle=hline.style_dotted)
+
+color col_vol_bar = vol_surge ? (close >= open ? #00f0ff : #ec4899) : (has_min_vol ? #0ea5e9 : color.new(#475569, 50))
+plot(vol_ratio, "Volume Ratio", color=col_vol_bar, style=plot.style_columns, display=display.all - display.status_line)
+
+mom_val = ta.ema(ta.rsi(close, 14) - 50, 5) / 10.0 + 1.0
+plot(mom_val, "Động Lượng Sóng Mua/Bán", color=mom_val >= 1.0 ? #10b981 : #f43f5e, linewidth=2, display=display.all - display.status_line)
+
+
+// ==============================================================================
+// 5. NỘI DUNG DASHBOARD: TRỰC QUAN, RÕ RÀNG, DỄ HIỂU NHẤT CHO TRADER
+// ==============================================================================
+bool cur_above_ema89 = close > ema_89
+bool is_bias_bull    = cur_above_ema89 and mtf_h1
+bool is_bias_bear    = (not cur_above_ema89) and (not mtf_h1)
+
+// 1. Phân loại xu hướng chi tiết
+string txt_trend = ""
+color  col_trend = #94a3b8
+if is_sideway
+    txt_trend := "🔄 SIDEWAY (Ping-Pong Cản/POC)"
+    col_trend := #38bdf8
+else if is_bias_bull
+    txt_trend := "🟢 TĂNG ĐỒNG THUẬN (Canh Mua)"
+    col_trend := #10b981
+else if is_bias_bear
+    txt_trend := "🔴 GIẢM ĐỒNG THUẬN (Canh Bán)"
+    col_trend := #f43f5e
+else if not cur_above_ema89 and mtf_h1
+    txt_trend := "🔻 ĐIỀU CHỈNH GIẢM (H1 Tăng)"
+    col_trend := #f59e0b
+else
+    txt_trend := "🔺 HỒI PHỤC TĂNG (H1 Giảm)"
+    col_trend := #38bdf8
+
+// 2. Trạng thái hành động cụ thể
+string txt_action = ""
+color  col_action = #94a3b8
+
+if valid_buy
+    txt_action := "🔥 VÀO MUA NGAY (BUY)"
+    col_action := #10b981
+else if valid_sell
+    txt_action := "🔥 VÀO BÁN NGAY (SELL)"
+    col_action := #f43f5e
+else if pos_side == 1
+    float cur_pnl = close - pos_entry
+    string pnl_str = (cur_pnl >= 0 ? "+" : "") + str.tostring(cur_pnl, "#.#") + "$"
+    if hit_poc_be
+        txt_action := "🎯 CHẠM POC → DỜI SL VỀ ENTRY (" + pnl_str + ")"
+        col_action := #10b981
+    else
+        txt_action := "🟢 ĐANG GIỮ BUY (" + pnl_str + ")"
+        col_action := cur_pnl >= 0 ? #10b981 : #f59e0b
+else if pos_side == -1
+    float cur_pnl = pos_entry - close
+    string pnl_str = (cur_pnl >= 0 ? "+" : "") + str.tostring(cur_pnl, "#.#") + "$"
+    if hit_poc_be
+        txt_action := "🎯 CHẠM POC → DỜI SL VỀ ENTRY (" + pnl_str + ")"
+        col_action := #10b981
+    else
+        txt_action := "🔴 ĐANG GIỮ SELL (" + pnl_str + ")"
+        col_action := cur_pnl >= 0 ? #10b981 : #f59e0b
+else if trade_status == "TP"
+    txt_action := "🎯 ĐÃ CHỐT LỜI TP (KÈO THẮNG)"
+    col_action := #10b981
+else if trade_status == "BE"
+    txt_action := "🛡️ ĐÃ HÒA VỐN BE (AN TOÀN)"
+    col_action := #38bdf8
+else if trade_status == "SL"
+    txt_action := "🛑 ĐÃ DÍNH SL (Đứng Ngoài)"
+    col_action := #f43f5e
+else if not time_allows
+    txt_action := "⚠️ NGHỈ (GIÃN SPREAD PHIÊN)"
+    col_action := #f43f5e
+else
+    txt_action := "☕ ĐANG CHỜ KÈO (ĐỨNG NGOÀI)"
+    col_action := #94a3b8
+
+// 3. Kế hoạch / Cản mục tiêu (Hiện Nam Châm POC, VAH, VAL khi đang đứng ngoài)
+string txt_target = ""
+if pos_side != 0 or valid_buy or valid_sell
+    float e = pos_side != 0 ? pos_entry : close
+    float s = pos_side != 0 ? pos_sl : (valid_buy ? close - sl_fixed_pts : close + sl_fixed_pts)
+    float t = pos_side != 0 ? pos_tp : (valid_buy ? close + sl_fixed_pts * rr_ratio : close - sl_fixed_pts * rr_ratio)
+    txt_target := "Vào: " + str.tostring(e, "#.#") + " | SL: " + str.tostring(s, "#.#") + " | TP: " + str.tostring(t, "#.#")
+else if trade_status == "TP"
+    txt_target := "🏆 ĐẠT MỤC TIÊU TP: " + str.tostring(pos_tp, "#.#") + "$"
+else if trade_status == "BE"
+    txt_target := "🛡️ BẢO TOÀN VỐN TẠI ENTRY: " + str.tostring(pos_entry, "#.#") + "$"
+else
+    string poc_str = not na(cur_poc_val) ? str.tostring(cur_poc_val, "#.#") : "---"
+    string vah_str = not na(cur_vah_val) ? str.tostring(cur_vah_val, "#.#") : "---"
+    string val_str = not na(cur_val_val) ? str.tostring(cur_val_val, "#.#") : "---"
+    string va_status = is_above_vah ? " [🔥 PHÁ VAH]" : (is_below_val ? " [⚡ PHÁ VAL]" : "")
+    txt_target := "🎯 POC: " + poc_str + " | VAH: " + vah_str + " | VAL: " + val_str + va_status
+
+// 4. Quản trị vốn
+string txt_risk = is_lot_safe ? (str.tostring(final_lot, "0.00") + " LOT (" + str.tostring(risk_pct, "#.#") + "% | Vốn $" + str.tostring(acc_balance, "#") + ")") : "⚠️ VƯỢT RỦI RO"
+color  col_risk = is_lot_safe ? #10b981 : #f43f5e
+
+// Vị trí bảng
+pos_tbl = position.top_right
+if table_pos == "Bottom Right"
+    pos_tbl := position.bottom_right
+else if table_pos == "Top Left"
+    pos_tbl := position.top_left
+else if table_pos == "Bottom Left"
+    pos_tbl := position.bottom_left
+
+// Cỡ chữ
+cell_size = size.small
+if font_ui_sz == "Nhỏ Gọn"
+    cell_size := size.tiny
+else if font_ui_sz == "Lớn Rõ"
+    cell_size := size.normal
+
+var table flow_tbl = na
+
+if barstate.islast
+    table.delete(flow_tbl)
+    
+    // --------------------------------------------------------------------------
+    // CHẾ ĐỘ 1: 📱 ĐIỆN THOẠI (BÊN PHẢI — SIÊU GỌN, RÕ NÉT, KHÔNG BỊ CHE)
+    // --------------------------------------------------------------------------
+    if ui_mode == "📱 Điện Thoại (Siêu Gọn)"
+        flow_tbl := table.new(pos_tbl, 2, 4, bgcolor=color.new(#0b0f19, 10), border_color=color.new(#334155, 30), border_width=1)
+        
+        // Dòng 0: Xu Hướng
+        table.cell(flow_tbl, 0, 0, "🧭 XU HƯỚNG", bgcolor=color.new(#1e293b, 40), text_color=#94a3b8, text_size=cell_size)
+        table.cell(flow_tbl, 1, 0, txt_trend, bgcolor=color.new(col_trend, 85), text_color=col_trend, text_size=cell_size)
+        
+        // Dòng 1: Hành Động
+        table.cell(flow_tbl, 0, 1, "🚦 HÀNH ĐỘNG", bgcolor=color.new(#1e293b, 40), text_color=color.white, text_size=cell_size)
+        table.cell(flow_tbl, 1, 1, txt_action, bgcolor=color.new(col_action, 80), text_color=col_action, text_size=cell_size)
+        
+        // Dòng 2: Mục Tiêu / Cản
+        table.cell(flow_tbl, 0, 2, "🎯 MỤC TIÊU", bgcolor=color.new(#1e293b, 40), text_color=#94a3b8, text_size=cell_size)
+        table.cell(flow_tbl, 1, 2, txt_target, bgcolor=color.new(#0f172a, 40), text_color=color.white, text_size=cell_size)
+        
+        // Dòng 3: Quản Trị Vốn
+        table.cell(flow_tbl, 0, 3, "💰 ĐI LỆNH", bgcolor=color.new(#1e293b, 40), text_color=#94a3b8, text_size=cell_size)
+        table.cell(flow_tbl, 1, 3, txt_risk, bgcolor=color.new(col_risk, 85), text_color=col_risk, text_size=cell_size)
+
+    // --------------------------------------------------------------------------
+    // CHẾ ĐỘ 2: 💻 MÁY TÍNH (CHI TIẾT 7 BƯỚC)
+    // --------------------------------------------------------------------------
+    else if ui_mode == "💻 Máy Tính (Chi Tiết 7 Bước)"
+        flow_tbl := table.new(pos_tbl, 3, 9, bgcolor=color.new(#0b0f19, 10), border_color=color.new(#334155, 30), border_width=1)
+        
+        // Header
+        table.cell(flow_tbl, 0, 0, "🏆 QUY TRÌNH 7 BƯỚC", bgcolor=color.new(#d97706, 25), text_color=#fbbf24, text_size=size.small)
+        table.cell(flow_tbl, 1, 0, "KẾT QUẢ", bgcolor=color.new(#d97706, 25), text_color=#fbbf24, text_size=size.small)
+        table.cell(flow_tbl, 2, 0, "GIẢI THÍCH CHI TIẾT (TNDUCK)", bgcolor=color.new(#d97706, 25), text_color=#fbbf24, text_size=size.small)
+
+        // Bước 1
+        table.cell(flow_tbl, 0, 1, "1. Xu Hướng & Chế Độ", text_color=#cbd5e1, text_size=size.small)
+        string step1_res = is_sideway ? "SIDEWAY" : (is_bias_bull or is_bias_bear ? "PASS" : "WAIT")
+        color  step1_col = is_sideway ? #38bdf8 : (is_bias_bull or is_bias_bear ? #10b981 : #f59e0b)
+        table.cell(flow_tbl, 1, 1, step1_res, bgcolor=color.new(step1_col, 80), text_color=step1_col, text_size=size.small)
+        table.cell(flow_tbl, 2, 1, txt_trend, text_color=color.white, text_size=size.small)
+
+        // Bước 2
+        bool smc_pass = is_bull_sweep or is_bear_sweep or market_trend != 0
+        string smc_msg = is_bull_sweep ? "⚡ SWEEP quét đáy (Bull)" : (is_bear_sweep ? "⚡ SWEEP quét đỉnh (Bear)" : (market_trend == 1 ? "Cấu trúc TĂNG" : (market_trend == -1 ? "Cấu trúc GIẢM" : "Tích lũy")))
+        table.cell(flow_tbl, 0, 2, "2. Cấu Trúc & ⚡ SWEEP", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 2, smc_pass ? "PASS" : "WAIT", bgcolor=color.new(smc_pass ? #10b981 : #f59e0b, 80), text_color=smc_pass ? #10b981 : #f59e0b, text_size=size.small)
+        table.cell(flow_tbl, 2, 2, smc_msg, text_color=color.white, text_size=size.small)
+
+        // Bước 3
+        bool in_zone = ((low <= ema_high and close >= ema_low) or (high >= ema_low and close <= ema_high)) or (math.abs(close - daily_vwap) <= nz(atr_val, 2.0) * 1.5)
+        bool zone_pass = in_zone or is_bull_ifvg or is_bear_ifvg or is_sideway
+        string zone_msg = is_sideway ? "Biên Cản / VAH / VAL Sideway" : ((is_bull_ifvg or is_bear_ifvg) ? "🔥 Chạm vùng iFVG Lật Mặt" : (in_zone ? "Giá đang chạm dải Rồng" : "Giá chạy xa dải Rồng"))
+        table.cell(flow_tbl, 0, 3, "3. Vùng Giá Trị (Rồng/VA/iFVG)", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 3, zone_pass ? "PASS" : "WAIT", bgcolor=color.new(zone_pass ? #10b981 : #f59e0b, 80), text_color=zone_pass ? #10b981 : #f59e0b, text_size=size.small)
+        table.cell(flow_tbl, 2, 3, zone_msg, text_color=color.white, text_size=size.small)
+
+        // Bước 4
+        bool has_trig = is_sideway ? (ping_buy_trigger or ping_sell_trigger) : ((is_bias_bull and has_rejection_buy and cross_up_ema) or (is_bias_bear and has_rejection_sell and cross_dn_ema))
+        table.cell(flow_tbl, 0, 4, "4. Nến Xác Nhận Đảo Chiều", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 4, has_trig ? "PASS" : "WAIT", bgcolor=color.new(has_trig ? #10b981 : #f59e0b, 80), text_color=has_trig ? #10b981 : #f59e0b, text_size=size.small)
+        table.cell(flow_tbl, 2, 4, has_trig ? "Có nến rút chân từ chối giá" : "Chưa có nến xác nhận", text_color=color.white, text_size=size.small)
+
+        // Bước 5
+        table.cell(flow_tbl, 0, 5, "5. Khối Lượng Volume", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 5, vol_surge or has_min_vol ? "PASS" : "FAIL", bgcolor=color.new(vol_surge or has_min_vol ? #10b981 : #f43f5e, 80), text_color=vol_surge or has_min_vol ? #10b981 : #f43f5e, text_size=size.small)
+        table.cell(flow_tbl, 2, 5, vol_surge ? "Cá mập gom hàng lớn" : (has_min_vol ? "Khối lượng đạt chuẩn" : "Vol yếu lèo tèo"), text_color=color.white, text_size=size.small)
+
+        // Bước 6
+        bool has_room = is_sideway ? true : ((is_bias_bull and has_room_buy) or (is_bias_bear and has_room_sell) or (not is_bias_bull and not is_bias_bear))
+        table.cell(flow_tbl, 0, 6, "6. Khoảng Trống Cản S/R", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 6, has_room ? "PASS" : "FAIL", bgcolor=color.new(has_room ? #10b981 : #f43f5e, 80), text_color=has_room ? #10b981 : #f43f5e, text_size=size.small)
+        table.cell(flow_tbl, 2, 6, has_room ? "Đủ khoảng trống ăn TP" : "Bị cản đè đầu quá gần", text_color=color.white, text_size=size.small)
+
+        // Bước 7
+        table.cell(flow_tbl, 0, 7, "7. Quản Trị Vốn Lot", text_color=#cbd5e1, text_size=size.small)
+        table.cell(flow_tbl, 1, 7, is_lot_safe ? "PASS" : "FAIL", bgcolor=color.new(is_lot_safe ? #10b981 : #f43f5e, 80), text_color=is_lot_safe ? #10b981 : #f43f5e, text_size=size.small)
+        table.cell(flow_tbl, 2, 7, is_lot_safe ? ("Lot tối đa: " + str.tostring(final_lot, "0.00")) : "Vốn $ chưa đủ đi min lot", text_color=color.white, text_size=size.small)
+
+        // KẾT LUẬN CUỐI CÙNG
+        table.cell(flow_tbl, 0, 8, "👉 KẾT LUẬN CHÍNH", bgcolor=color.new(#1e293b, 50), text_color=#fbbf24, text_size=size.normal)
+        table.cell(flow_tbl, 1, 8, txt_action, bgcolor=color.new(col_action, 80), text_color=col_action, text_size=size.normal)
+        table.cell(flow_tbl, 2, 8, txt_target + " | " + txt_risk, bgcolor=color.new(#1e293b, 50), text_color=color.white, text_size=size.small)

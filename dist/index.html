@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My PnL - Institutional Trading Journal & Analytics</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="My PnL">
+  <meta name="theme-color" content="#0a0d14">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-DVbW-xXl.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CwG2dOPx.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <div class="brand-icon-box">P</div>
+          <span>My <strong style="color: #60a5fa;">PnL</strong></span>
+        </div>
+        <button class="brand-toggle-btn" id="btn-toggle-sidebar" title="Thu gọn / Mở rộng Sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+            <path d="M9 3v18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Upload Trade Action Button -->
+      <button class="btn-upload-trade" id="btn-open-upload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="16"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        <span>+ Ghi Lời / Lỗ</span>
+      </button>
+
+      <!-- Main Navigation Menu -->
+      <nav class="sidebar-nav">
+        <button class="nav-item" data-view="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="7" height="9" x="3" y="3" rx="1"/>
+            <rect width="7" height="5" x="14" y="3" rx="1"/>
+            <rect width="7" height="9" x="14" y="12" rx="1"/>
+            <rect width="7" height="5" x="3" y="16" rx="1"/>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+
+        <button class="nav-item" data-view="stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" x2="18" y1="20" y2="10"/>
+            <line x1="12" x2="12" y1="20" y2="4"/>
+            <line x1="6" x2="6" y1="20" y2="14"/>
+          </svg>
+          <span>Stats</span>
+        </button>
+
+        <!-- Active View by default matching screenshot -->
+        <button class="nav-item active" data-view="calendar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="18" height="18" x="3" y="4" rx="2"/>
+            <line x1="16" x2="16" y1="2" y2="6"/>
+            <line x1="8" x2="8" y1="2" y2="6"/>
+            <line x1="3" x2="21" y1="10" y2="10"/>
+          </svg>
+          <span>Calendar</span>
+        </button>
+
+        <button class="nav-item" data-view="journal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+          <span>Trade Journal</span>
+        </button>
+
+        <button class="nav-item" data-view="insights">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+          <span>Trading Insights</span>
+        </button>
+
+        <button class="nav-item" data-view="diary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+          <span>Trade Diary</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-request-feature">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+            <line x1="12" x2="12" y1="8" y2="16"/>
+            <line x1="8" x2="16" y1="12" y2="12"/>
+          </svg>
+          <span>Request Feature</span>
+        </button>
+
+        <button class="nav-item" id="btn-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </button>
+
+        <button class="nav-item" id="btn-sign-out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" x2="9" y1="12" y2="12"/>
+          </svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+    <div class="main-wrapper">
+      <!-- TOP NAVIGATION BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title" id="page-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <rect width="18" height="18" x="3" y="4" rx="2"/>
+              <line x1="16" x2="16" y1="2" y2="6"/>
+              <line x1="8" x2="8" y1="2" y2="6"/>
+              <line x1="3" x2="21" y1="10" y2="10"/>
+            </svg>
+            <span id="page-title-text">Calendar</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Currency Switcher ($ USD <-> ₫ VND) -->
+          <div class="currency-switcher-pill" id="currency-switcher-top" title="Chuyển đổi hiển thị USD ($) ↔ VND (₫)">
+            <button type="button" class="curr-toggle-btn active" id="btn-curr-usd" data-curr="USD">$ USD</button>
+            <button type="button" class="curr-toggle-btn" id="btn-curr-vnd" data-curr="VND">₫ VND</button>
+          </div>
+
+          <!-- Supabase Cloud Sync Indicator -->
+          <div class="cloud-sync-pill" id="cloud-sync-pill" title="Trạng thái kết nối Supabase Cloud">
+            <span class="cloud-dot" id="cloud-dot"></span>
+            <span class="cloud-label" id="cloud-text">Cloud Sync</span>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <button class="btn-topbar-action btn-demo-action" id="btn-quick-demo" title="Nạp 20 ngày trade mẫu để kiểm tra giao diện">
+            ✨ Demo Data
+          </button>
+          <button class="btn-topbar-action btn-download-action" id="btn-export-csv-top" title="Tải nhật ký về máy (Excel CSV)">
+            📊 Xuất Excel
+          </button>
+          <button class="btn-topbar-action btn-download-action" id="btn-export-json-top" title="Sao lưu toàn bộ dữ liệu (JSON)">
+            📥 Tải JSON
+          </button>
+          <button class="btn-topbar-action btn-reset-action" id="btn-quick-reset" title="Xóa toàn bộ dữ liệu về trắng">
+            🗑️ Reset
+          </button>
+
+          <!-- Account selector pill -->
+          <button class="btn-pill-dropdown account-selector-pill" id="btn-account-modal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            <span id="active-account-name">Tài Khoản Giao Dịch Chính</span>
+          </button>
+
+          <!-- Active Balance Badge -->
+          <div class="account-badge-box" id="account-badge" title="Chi tiết vốn tài khoản">
+            <div class="account-badge-main text-neutral" id="badge-active-pnl">$0.00</div>
+            <div class="account-badge-meta">
+              <span>Cash: <strong id="badge-cash">$0.00</strong></span>
+              <span>Active: <strong id="badge-active" class="text-neutral">$0.00</strong></span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ==================== VIEW 1: CALENDAR (DEFAULT) ==================== -->
+      <section class="view-container active" id="view-calendar">
+        <!-- Monthly Summary Banner matching screenshot -->
+        <div class="monthly-summary-card">
+          <div class="summary-left">
+            <div class="summary-heading-row">
+              <div class="summary-heading">Bảng Tổng Hợp Tháng (Monthly Summary)</div>
+              <div class="summary-tag-pill" id="summary-month-tag">Tháng 10 / 2026</div>
+            </div>
+
+            <div class="summary-metrics">
+              <div class="summary-metric-item">
+                <span class="metric-label">Tổng PnL Tháng</span>
+                <span class="metric-value text-neutral" id="stat-month-pnl">$0.00</span>
+              </div>
+              <div class="summary-metric-item">
+                <span class="metric-label">Tăng Trưởng %</span>
+                <span class="metric-value text-neutral" id="stat-month-pct">0.0%</span>
+              </div>
+              <div class="summary-metric-item">
+                <span class="metric-label">Số Ngày Giao Dịch</span>
+                <span class="metric-value" id="stat-month-trades" style="color: #ffffff;">0 ngày</span>
+              </div>
+              <div class="summary-metric-item">
+                <span class="metric-label">Win Rate</span>
+                <span class="metric-value text-accent" id="stat-month-winrate">0%</span>
+              </div>
+              <div class="summary-metric-item win-loss-counter">
+                <span class="metric-label">Thắng / Thua</span>
+                <div class="win-loss-pills">
+                  <span class="pill-win" id="stat-win-days">0 Thắng</span>
+                  <span class="pill-loss" id="stat-loss-days">0 Thua</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sleek Winrate Progress Bar -->
+            <div class="monthly-progress-track">
+              <div class="monthly-progress-fill" id="monthly-winrate-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="summary-right-nav">
+            <button class="btn-quick-log-hero" id="btn-quick-log-banner">
+              ⚡ Ghi Lời / Lỗ Ngay
+            </button>
+
+            <div class="nav-controls-box">
+              <div class="nav-group">
+                <span>Năm:</span>
+                <select id="select-year" class="select-custom">
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026" selected>2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+
+              <div class="nav-group">
+                <span>Tháng:</span>
+                <div class="month-arrows-group">
+                  <button class="btn-nav-arrow" id="btn-prev-month" title="Tháng trước">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <select id="select-month">
+                    <option value="0">Tháng 1</option>
+                    <option value="1">Tháng 2</option>
+                    <option value="2">Tháng 3</option>
+                    <option value="3">Tháng 4</option>
+                    <option value="4">Tháng 5</option>
+                    <option value="5">Tháng 6</option>
+                    <option value="6">Tháng 7</option>
+                    <option value="7">Tháng 8</option>
+                    <option value="8">Tháng 9</option>
+                    <option value="9" selected>Tháng 10</option>
+                    <option value="10">Tháng 11</option>
+                    <option value="11">Tháng 12</option>
+                  </select>
+                  <button class="btn-nav-arrow" id="btn-next-month" title="Tháng kế tiếp">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heatmap Grid + Weekly Summary rendered via JavaScript -->
+        <div id="calendar-container"></div>
+      </section>
+
+      <!-- ==================== VIEW 2: DASHBOARD ==================== -->
+      <section class="view-container" id="view-dashboard"></section>
+
+      <!-- ==================== VIEW 3: STATS ==================== -->
+      <section class="view-container" id="view-stats">
+        <div id="stats-container"></div>
+      </section>
+
+      <!-- ==================== VIEW 4: TRADE JOURNAL ==================== -->
+      <section class="view-container" id="view-journal"></section>
+
+      <!-- ==================== VIEW 5: TRADING INSIGHTS ==================== -->
+      <section class="view-container" id="view-insights"></section>
+
+      <!-- ==================== VIEW 6: TRADE DIARY ==================== -->
+      <section class="view-container" id="view-diary"></section>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: GHI LỜI / LỖ SIÊU ĐƠN GIẢN ==================== -->
+  <div class="modal-overlay" id="modal-upload-trade">
+    <div class="modal-card modal-quick-pnl">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-title-icon">⚡</span> Ghi Lời / Lỗ Trong Ngày
+        </div>
+        <button class="btn-close-modal" data-modal="modal-upload-trade">&times;</button>
+      </div>
+
+      <form id="form-upload-trade">
+        <!-- 1. Ngày giao dịch -->
+        <div class="form-group mb-3">
+          <label class="form-label">📅 Ngày Giao Dịch</label>
+          <input type="date" class="form-input form-input-lg font-mono" id="trade-date" required>
+        </div>
+
+        <!-- 2. Nút chọn Lời (+) hoặc Lỗ (-) cực to và đẹp -->
+        <div class="pnl-type-selector">
+          <button type="button" class="btn-type-toggle active-profit" id="toggle-type-profit">
+            <span class="type-icon">🟢</span>
+            <div class="type-text">
+              <span class="type-title">HÔM NAY LỜI (+)</span>
+              <span class="type-sub">Có lãi (Profit)</span>
+            </div>
+          </button>
+          <button type="button" class="btn-type-toggle" id="toggle-type-loss">
+            <span class="type-icon">🔴</span>
+            <div class="type-text">
+              <span class="type-title">HÔM NAY LỖ (-)</span>
+              <span class="type-sub">Thua lỗ (Loss)</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Hidden input tracking PROFIT or LOSS -->
+        <input type="hidden" id="pnl-type-value" value="PROFIT">
+        <input type="hidden" id="modal-currency-value" value="USD">
+
+        <!-- 3. Chọn đơn vị tiền & Nhập số tiền -->
+        <div class="modal-currency-selector-row mb-2">
+          <span class="text-xs text-muted">Đơn vị tiền nhập:</span>
+          <div class="modal-curr-tabs">
+            <button type="button" class="modal-curr-tab active" id="modal-curr-usd" data-curr="USD">$ USD</button>
+            <button type="button" class="modal-curr-tab" id="modal-curr-vnd" data-curr="VND">₫ VND</button>
+          </div>
+          <span class="text-xs text-muted" id="modal-exchange-hint" style="margin-left: auto;">1 USD ≈ 25.400 ₫</span>
+        </div>
+
+        <div class="form-group mb-2">
+          <label class="form-label" id="amount-label">💰 Số Tiền Lời ($)</label>
+          <div class="input-currency-wrapper">
+            <span class="currency-prefix text-profit" id="amount-prefix">+$</span>
+            <input type="number" step="any" min="0" class="form-input form-input-hero font-mono" id="trade-amount-raw" placeholder="350.00" required autofocus>
+          </div>
+        </div>
+
+        <!-- Quick preset amount chips (Dynamic for USD / VND) -->
+        <div class="quick-chips-group" id="quick-chips-container">
+          <span class="chips-label">Chọn nhanh:</span>
+          <button type="button" class="chip-btn" data-amt="100">100$</button>
+          <button type="button" class="chip-btn" data-amt="250">250$</button>
+          <button type="button" class="chip-btn" data-amt="500">500$</button>
+          <button type="button" class="chip-btn" data-amt="1000">1,000$</button>
+          <button type="button" class="chip-btn" data-amt="2000">2,000$</button>
+        </div>
+
+        <!-- 4. Ghi chú & Cặp tiền ngắn gọn (Tùy chọn) -->
+        <div class="form-group mb-4 mt-3">
+          <label class="form-label">📝 Ghi chú hoặc Cặp tiền <span class="text-muted">(Tùy chọn)</span></label>
+          <input type="text" class="form-input" id="trade-notes" placeholder="VD: Vàng XAUUSD, phiên Mỹ ăn đậm...">
+        </div>
+
+        <!-- Optional Advanced Toggle -->
+        <div class="advanced-toggle-row">
+          <button type="button" class="btn-link-subtle" id="btn-toggle-advanced">
+            ⚙️ Mở rộng ghi chi tiết (Cặp tiền, Lots) &darr;
+          </button>
+        </div>
+
+        <div id="advanced-fields-box" style="display: none;" class="advanced-fields-box">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Cặp tiền</label>
+              <input type="text" class="form-input" id="trade-symbol" placeholder="XAUUSD, BTCUSDT...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Khối lượng (Lots)</label>
+              <input type="number" step="any" class="form-input" id="trade-lots" placeholder="0.1" value="0.1">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions mt-4">
+          <button type="button" class="btn btn-secondary" data-modal="modal-upload-trade">Hủy</button>
+          <button type="submit" class="btn btn-primary btn-save-pnl" id="btn-submit-pnl">
+            💾 Lưu Vào Lịch Ngay
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: DAY DETAILS & QUICK ACTIONS ==================== -->
+  <div class="modal-overlay" id="modal-day-detail">
+    <div class="modal-card modal-quick-pnl">
+      <div class="modal-header">
+        <div class="modal-title" id="day-detail-title">📅 Chi Tiết Ngày</div>
+        <button class="btn-close-modal" data-modal="modal-day-detail">&times;</button>
+      </div>
+
+      <div class="day-modal-summary-card" id="day-detail-banner">
+        <div class="day-hero-pnl-label">KẾT QUẢ GIAO DỊCH NGÀY</div>
+        <div class="day-hero-pnl-value font-mono font-bold" id="day-detail-pnl">+$0.00</div>
+        <div class="day-hero-notes" id="day-detail-notes">Chưa có dữ liệu</div>
+      </div>
+
+      <div class="day-detail-actions-grid mt-4">
+        <button type="button" class="btn btn-primary" id="btn-edit-day-pnl">
+          ✏️ Nhập / Sửa Lời Lỗ Ngày Này
+        </button>
+        <button type="button" class="btn btn-danger-subtle" id="btn-delete-day-pnl">
+          🗑️ Xóa Lợi Nhuận Ngày Này
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ACCOUNT SWITCHER & SETTINGS ==================== -->
+  <div class="modal-overlay" id="modal-account">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Tài Khoản Giao Dịch (Trading Accounts)</div>
+        <button class="btn-close-modal" data-modal="modal-account">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label class="form-label">Chọn Tài Khoản Hoạt Động</label>
+        <select class="form-select" id="account-switch-select"></select>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Tên tài khoản</label>
+          <input type="text" class="form-input" id="acc-name" value="Tài Khoản Giao Dịch Chính">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vốn Ban Đầu ($)</label>
+          <input type="number" class="form-input" id="acc-initial" value="100000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Active Gain ($)</label>
+          <input type="number" class="form-input" id="acc-gain" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Số Dư Khả Dụng Cash ($)</label>
+          <input type="number" class="form-input" id="acc-cash" value="0">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btn-reset-demo-data" style="color: var(--loss-light); margin-right: auto;">
+          Xóa Sạch Dữ Liệu (Reset về 0)
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-save-account">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ADD DIARY ==================== -->
+  <div class="modal-overlay" id="modal-add-diary">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Viết Nhật Ký Tâm Lý & Kỷ Luật</div>
+        <button class="btn-close-modal" data-modal="modal-add-diary">&times;</button>
+      </div>
+
+      <form id="form-add-diary">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Ngày</label>
+            <input type="date" class="form-input" id="diary-date" required value="2025-07-31">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phiên giao dịch</label>
+            <select class="form-select" id="diary-session">
+              <option value="Phiên Á">Phiên Á (Tokyo/Sydney)</option>
+              <option value="Phiên Âu">Phiên Âu (London)</option>
+              <option value="Phiên Mỹ">Phiên Mỹ (New York)</option>
+              <option value="Cả ngày">Cả ngày</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mức độ kỷ luật (Sao)</label>
+            <select class="form-select" id="diary-score">
+              <option value="5">⭐⭐⭐⭐⭐ 5/5 - Kỷ luật hoàn hảo</option>
+              <option value="4">⭐⭐⭐⭐ 4/5 - Tốt, tuân thủ hầu hết</option>
+              <option value="3">⭐⭐⭐ 3/5 - Bình thường</option>
+              <option value="2">⭐⭐ 2/5 - Hơi nôn nóng</option>
+              <option value="1">⭐ 1/5 - FOMO, phá vỡ quy tắc</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tâm lý chủ đạo</label>
+            <select class="form-select" id="diary-mood">
+              <option value="GREAT">Tự tin, điềm tĩnh</option>
+              <option value="GOOD">Ổn định</option>
+              <option value="ANXIOUS">Lo lắng, nôn nóng</option>
+              <option value="FOMO">FOMO rượt đuổi nến</option>
+            </select>
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Nhận định & Bài học rút ra</label>
+            <textarea class="form-textarea" id="diary-notes" placeholder="Hôm nay vào lệnh thế nào? Cảm xúc ra sao khi giá tiếp cận POC và Kháng Cự?..." required></textarea>
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Sai sót cần tránh lần sau</label>
+            <input type="text" class="form-input" id="diary-mistakes" placeholder="VD: Vào sớm khi nến chưa đóng cửa xác nhận...">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-modal="modal-add-diary">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu Vào Nhật Ký</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION ENTRY SCRIPT -->
+</body>
+</html>
