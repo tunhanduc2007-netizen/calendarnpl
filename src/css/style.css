@@ -114,6 +114,21 @@ body {
   color: #ffffff;
 }
 
+.brand-img-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.brand-logo:hover .brand-img-logo {
+  transform: scale(1.05);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.55);
+}
+
 .brand-toggle-btn {
   background: transparent;
   border: none;
