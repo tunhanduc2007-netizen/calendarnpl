@@ -1,16 +1,16 @@
 {
-  "name": "My PnL - Institutional Trading Journal & Analytics",
-  "short_name": "My PnL",
+  "name": "tnduck PnL - Institutional Trading Journal & Analytics",
+  "short_name": "tnduck PnL",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0d14",
   "theme_color": "#0a0d14",
-  "description": "Nhật ký giao dịch Vàng & Crypto thông minh với đồng bộ Supabase Cloud",
+  "description": "Nhật ký giao dịch Vàng & Crypto thông minh độc quyền tnduck",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "/logo_tnduck.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]

@@ -39,6 +39,38 @@ export class CalendarEngine {
     return this.dataService.formatCurrency(num, showSign);
   }
 
+  formatCellCurrency(num) {
+    const currency = this.dataService.getCurrency();
+    const rate = this.dataService.getExchangeRate();
+    const n = Number(num || 0);
+
+    if (currency === 'VND') {
+      const vndVal = Math.round(n * rate);
+      const isNeg = vndVal < 0;
+      const abs = Math.abs(vndVal);
+      const sign = isNeg ? '-' : '+';
+      if (abs >= 1000000) {
+        return `${sign}${(abs / 1000000).toFixed(1).replace(/\.0$/, '')}M₫`;
+      }
+      if (abs >= 1000) {
+        return `${sign}${Math.round(abs / 1000)}k₫`;
+      }
+      return `${sign}${abs}₫`;
+    } else {
+      if (!n || n === 0) return '$0';
+      const isNeg = n < 0;
+      const abs = Math.abs(n);
+      const sign = isNeg ? '-$' : '+$';
+      if (abs >= 10000) {
+        return `${sign}${(abs / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+      }
+      if (abs >= 100 || Number.isInteger(abs)) {
+        return `${sign}${Math.round(abs).toLocaleString('en-US')}`;
+      }
+      return `${sign}${abs.toFixed(2)}`;
+    }
+  }
+
   getMonthName(monthIndex) {
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return months[monthIndex];
@@ -150,7 +182,7 @@ export class CalendarEngine {
               return `
                 <div class="weekly-card ${isProfit ? 'weekly-win' : (isLoss ? 'weekly-loss' : '')}">
                   <div class="weekly-title">Tuần ${idx + 1}</div>
-                  <div class="weekly-amount ${colorClass}">${this.formatCurrency(weekPnL)}</div>
+                  <div class="weekly-amount ${colorClass}">${this.formatCellCurrency(weekPnL)}</div>
                   <div class="weekly-subtext">${weekDaysCount > 0 ? `${weekDaysCount} ngày giao dịch` : 'Chưa có lệnh'}</div>
                 </div>
               `;
@@ -174,7 +206,7 @@ export class CalendarEngine {
               if (!cell.isCurrentMonth) {
                 return `
                   <div class="cal-cell outside-month">
-                    <div class="cal-diagonal-stripes"></div>
+                    <span class="cal-day-num outside-num">${cell.dayNumber}</span>
                   </div>
                 `;
               }
@@ -196,7 +228,7 @@ export class CalendarEngine {
                   ${hasTrades ? `
                     <div class="cal-cell-center">
                       <div class="cal-day-pnl ${isWin ? 'text-profit' : 'text-loss'}">
-                        ${this.formatCurrency(cell.pnl)}
+                        ${this.formatCellCurrency(cell.pnl)}
                       </div>
                       <div class="cal-day-pill ${isWin ? 'pill-profit' : 'pill-loss'}" title="${notePreview}">
                         ${notePreview}
@@ -205,7 +237,6 @@ export class CalendarEngine {
                   ` : `
                     <div class="cal-cell-empty-hover">
                       <span class="empty-plus-icon">+</span>
-                      <span class="empty-add-text">Ghi PnL</span>
                     </div>
                   `}
                 </div>

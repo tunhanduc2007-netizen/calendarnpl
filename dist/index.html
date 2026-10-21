@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My PnL - Institutional Trading Journal & Analytics</title>
+  <title>tnduck PnL - Institutional Trading Journal & Analytics</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="My PnL">
+  <meta name="apple-mobile-web-app-title" content="tnduck PnL">
   <meta name="theme-color" content="#0a0d14">
-  <link rel="apple-touch-icon" href="/icon.svg">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/logo_tnduck.jpg">
+  <link rel="icon" type="image/jpeg" href="/logo_tnduck.jpg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DVbW-xXl.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CwG2dOPx.css">
+  <script type="module" crossorigin src="/assets/index-ebMKbbhZ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-yitmQ5gD.css">
 </head>
 <body>
   <div class="app-container">
@@ -23,8 +23,8 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="brand-logo">
-          <div class="brand-icon-box">P</div>
-          <span>My <strong style="color: #60a5fa;">PnL</strong></span>
+          <img src="/logo_tnduck.jpg" alt="tnduck Logo" class="brand-img-logo">
+          <span>tnduck <strong style="color: #38bdf8;">PnL</strong></span>
         </div>
         <button class="brand-toggle-btn" id="btn-toggle-sidebar" title="Thu gọn / Mở rộng Sidebar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -46,7 +46,60 @@
 
       <!-- Main Navigation Menu -->
       <nav class="sidebar-nav">
-        <button class="nav-item" data-view="dashboard">
+        <!-- 1. Calendar -->
+        <button class="nav-item active" data-view="calendar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="18" height="18" x="3" y="4" rx="2"/>
+            <line x1="16" x2="16" y1="2" y2="6"/>
+            <line x1="8" x2="8" y1="2" y2="6"/>
+            <line x1="3" x2="21" y1="10" y2="10"/>
+          </svg>
+          <span>Lịch</span>
+        </button>
+
+        <!-- 2. Journal -->
+        <button class="nav-item" data-view="journal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+          <span>Nhật Ký</span>
+        </button>
+
+        <!-- 3. Center Mobile Action Button (+ Ghi PnL) -->
+        <button class="nav-item nav-item-quick-add" id="btn-mobile-quick-add" type="button" title="Ghi Lời / Lỗ Ngay">
+          <div class="nav-quick-add-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="20" height="20">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <span>Ghi PnL</span>
+        </button>
+
+        <!-- 4. Stats -->
+        <button class="nav-item" data-view="stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" x2="18" y1="20" y2="10"/>
+            <line x1="12" x2="12" y1="20" y2="4"/>
+            <line x1="6" x2="6" y1="20" y2="14"/>
+          </svg>
+          <span>Thống Kê</span>
+        </button>
+
+        <!-- 5. Insights -->
+        <button class="nav-item" data-view="insights">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+          <span>Phân Tích</span>
+        </button>
+
+        <!-- Desktop-Only Nav Items -->
+        <button class="nav-item desktop-only-nav" data-view="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect width="7" height="9" x="3" y="3" rx="1"/>
             <rect width="7" height="5" x="14" y="3" rx="1"/>
@@ -56,50 +109,12 @@
           <span>Dashboard</span>
         </button>
 
-        <button class="nav-item" data-view="stats">
+        <button class="nav-item desktop-only-nav" data-view="diary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" x2="18" y1="20" y2="10"/>
-            <line x1="12" x2="12" y1="20" y2="4"/>
-            <line x1="6" x2="6" y1="20" y2="14"/>
-          </svg>
-          <span>Stats</span>
-        </button>
-
-        <!-- Active View by default matching screenshot -->
-        <button class="nav-item active" data-view="calendar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect width="18" height="18" x="3" y="4" rx="2"/>
-            <line x1="16" x2="16" y1="2" y2="6"/>
-            <line x1="8" x2="8" y1="2" y2="6"/>
-            <line x1="3" x2="21" y1="10" y2="10"/>
-          </svg>
-          <span>Calendar</span>
-        </button>
-
-        <button class="nav-item" data-view="journal">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-            <path d="M6 6h10"/>
-            <path d="M6 10h10"/>
-          </svg>
-          <span>Trade Journal</span>
-        </button>
-
-        <button class="nav-item" data-view="insights">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 16v-4"/>
-            <path d="M12 8h.01"/>
-          </svg>
-          <span>Trading Insights</span>
-        </button>
-
-        <button class="nav-item" data-view="diary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 1 3-3h7z"/>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
           </svg>
-          <span>Trade Diary</span>
+          <span>Tâm Lý Trade</span>
         </button>
       </nav>
 
@@ -138,6 +153,10 @@
       <!-- TOP NAVIGATION BAR -->
       <header class="topbar">
         <div class="topbar-left">
+          <div class="mobile-brand-tag" id="mobile-brand-header">
+            <img src="/logo_tnduck.jpg" alt="Logo" class="brand-img-logo-mobile">
+            <span>tnduck <strong style="color: #38bdf8;">PnL</strong></span>
+          </div>
           <div class="topbar-title" id="page-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
               <rect width="18" height="18" x="3" y="4" rx="2"/>
@@ -207,27 +226,26 @@
             </div>
 
             <div class="summary-metrics">
-              <div class="summary-metric-item">
-                <span class="metric-label">Tổng PnL Tháng</span>
+              <div class="summary-metric-item summary-pnl-hero-item">
+                <span class="metric-label">Tổng Lợi Nhuận Tháng</span>
                 <span class="metric-value text-neutral" id="stat-month-pnl">$0.00</span>
               </div>
-              <div class="summary-metric-item">
-                <span class="metric-label">Tăng Trưởng %</span>
-                <span class="metric-value text-neutral" id="stat-month-pct">0.0%</span>
-              </div>
-              <div class="summary-metric-item">
-                <span class="metric-label">Số Ngày Giao Dịch</span>
-                <span class="metric-value" id="stat-month-trades" style="color: #ffffff;">0 ngày</span>
-              </div>
-              <div class="summary-metric-item">
-                <span class="metric-label">Win Rate</span>
-                <span class="metric-value text-accent" id="stat-month-winrate">0%</span>
-              </div>
-              <div class="summary-metric-item win-loss-counter">
-                <span class="metric-label">Thắng / Thua</span>
-                <div class="win-loss-pills">
-                  <span class="pill-win" id="stat-win-days">0 Thắng</span>
-                  <span class="pill-loss" id="stat-loss-days">0 Thua</span>
+
+              <div class="summary-metrics-pill-row">
+                <div class="summary-metric-item">
+                  <span class="metric-label">Tăng Trưởng</span>
+                  <span class="metric-value text-neutral" id="stat-month-pct">0.0%</span>
+                </div>
+                <div class="summary-metric-item">
+                  <span class="metric-label">Win Rate</span>
+                  <span class="metric-value text-accent" id="stat-month-winrate">0%</span>
+                </div>
+                <div class="summary-metric-item win-loss-counter">
+                  <span class="metric-label">Thắng / Thua</span>
+                  <div class="win-loss-pills">
+                    <span class="pill-win" id="stat-win-days">0W</span>
+                    <span class="pill-loss" id="stat-loss-days">0L</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -244,23 +262,12 @@
             </button>
 
             <div class="nav-controls-box">
-              <div class="nav-group">
-                <span>Năm:</span>
-                <select id="select-year" class="select-custom">
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026" selected>2026</option>
-                  <option value="2027">2027</option>
-                </select>
-              </div>
-
-              <div class="nav-group">
-                <span>Tháng:</span>
-                <div class="month-arrows-group">
-                  <button class="btn-nav-arrow" id="btn-prev-month" title="Tháng trước">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
-                  </button>
-                  <select id="select-month">
+              <div class="month-arrows-group">
+                <button class="btn-nav-arrow" id="btn-prev-month" title="Tháng trước">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div class="month-year-selectors">
+                  <select id="select-month" class="select-month-hero">
                     <option value="0">Tháng 1</option>
                     <option value="1">Tháng 2</option>
                     <option value="2">Tháng 3</option>
@@ -274,10 +281,17 @@
                     <option value="10">Tháng 11</option>
                     <option value="11">Tháng 12</option>
                   </select>
-                  <button class="btn-nav-arrow" id="btn-next-month" title="Tháng kế tiếp">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
-                  </button>
+                  <select id="select-year" class="select-year-hero">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                  </select>
                 </div>
+                <button class="btn-nav-arrow" id="btn-next-month" title="Tháng kế tiếp">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -309,6 +323,7 @@
   <!-- ==================== MODAL: GHI LỜI / LỖ SIÊU ĐƠN GIẢN ==================== -->
   <div class="modal-overlay" id="modal-upload-trade">
     <div class="modal-card modal-quick-pnl">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title">
           <span class="modal-title-icon">⚡</span> Ghi Lời / Lỗ Trong Ngày
@@ -412,6 +427,7 @@
   <!-- ==================== MODAL: DAY DETAILS & QUICK ACTIONS ==================== -->
   <div class="modal-overlay" id="modal-day-detail">
     <div class="modal-card modal-quick-pnl">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title" id="day-detail-title">📅 Chi Tiết Ngày</div>
         <button class="btn-close-modal" data-modal="modal-day-detail">&times;</button>
@@ -437,6 +453,7 @@
   <!-- ==================== MODAL: ACCOUNT SWITCHER & SETTINGS ==================== -->
   <div class="modal-overlay" id="modal-account">
     <div class="modal-card">
+      <div class="ios-drag-handle"></div>
       <div class="modal-header">
         <div class="modal-title">Tài Khoản Giao Dịch (Trading Accounts)</div>
         <button class="btn-close-modal" data-modal="modal-account">&times;</button>
