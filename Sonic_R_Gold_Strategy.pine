@@ -1,11 +1,11 @@
 //@version=6
-strategy("Chiến Lược tnduck [Sonic R & Volume Profile]", shorttitle="tnduck Strategy Tester", overlay=true, initial_capital=100, default_qty_type=strategy.fixed, default_qty_value=1, commission_type=strategy.commission.cash_per_contract, commission_value=0.07, slippage=2, max_labels_count=500, max_lines_count=500, max_boxes_count=500, process_orders_on_close=true)
+strategy("Chiến Lược tnduck [Sonic R & Volume Profile]", shorttitle="tnduck Strategy Tester", overlay=true, initial_capital=1000, margin_long=0, margin_short=0, commission_type=strategy.commission.cash_per_contract, commission_value=0.07, slippage=2, max_labels_count=500, max_lines_count=500, max_boxes_count=500, process_orders_on_close=true)
 
 // ==============================================================================
 // 1. THỜI GIAN BACKTEST & CÀI ĐẶT THÔNG SỐ
 // ==============================================================================
 grp_bt      = "=== 1. KHOẢNG THỜI GIAN BACKTEST (3 - 6 THÁNG) ==="
-use_date    = input.bool(true, "Bật lọc theo khoảng ngày", group=grp_bt)
+use_date    = input.bool(false, "Giới hạn theo khoảng ngày (Mặc định: Tắt để test toàn bộ lịch sử)", group=grp_bt)
 start_date  = input.time(timestamp("2024-01-01 00:00 +0000"), "Từ Ngày", group=grp_bt)
 end_date    = input.time(timestamp("2026-12-31 23:59 +0000"), "Đến Ngày", group=grp_bt)
 in_date     = not use_date or (time >= start_date and time <= end_date)
@@ -26,11 +26,10 @@ grp_sig     = "=== 5. QUẢN TRỊ RỦI RO & PHƯƠNG THỨC TP/SL ==="
 tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig)
 allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig)
 require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến", group=grp_sig)
-filter_kz   = input.bool(true, "Lá Chắn Phiên Âu (14h-18h) & Mỹ (19h30-23h)", group=grp_sig)
+filter_kz   = input.bool(false, "Bật Lá Chắn Phiên Âu/Mỹ (Tắt để test mọi khung giờ)", group=grp_sig)
 sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Cơ Bản (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig)
 min_rr_ratio= input.float(1.5, "Tỷ Lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig)
 rr_ratio    = input.float(2.0, "Tỷ Lệ Ăn Lời R:R Chuẩn", minval=1.0, step=0.5, group=grp_sig)
-contract_sz = input.float(100.0, "Kích Thước Hợp Đồng Sàn (1 Lot = 100 Oz)", group=grp_sig)
 
 
 // ==============================================================================
@@ -85,6 +84,9 @@ if not na(cur_sup_price) and close < cur_sup_price
     if sr_flip
         cur_res_price := cur_sup_price
     cur_sup_price := na
+
+plot(cur_res_price, "Kháng Cự", color=color.new(#f43f5e, 30), linewidth=1, style=plot.style_linebr)
+plot(cur_sup_price, "Hỗ Trợ", color=color.new(#10b981, 30), linewidth=1, style=plot.style_linebr)
 
 
 // ==============================================================================
@@ -160,13 +162,15 @@ if array.size(arr_vol_bin) > 0 and (barstate.isconfirmed or barstate.islast)
         cur_vah_val := float(up_k) * poc_step
         cur_val_val := float(dn_k) * poc_step
 
+plot(show_poc ? cur_poc_val : na, "POC Hôm Nay", color=color.new(#f59e0b, 20), linewidth=2, style=plot.style_circles)
+
 
 // ==============================================================================
 // 5. ĐIỀU KIỆN KÍCH HOẠT LỆNH (ĐỒNG BỘ 100% VỚI BẢN INDICATOR)
 // ==============================================================================
 h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off)
 h1_ema   = request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
-mtf_h1   = h1_close > h1_ema
+mtf_h1   = na(h1_close) or na(h1_ema) or (h1_close > h1_ema)
 
 atr_val         = ta.atr(14)
 vol_ma20        = ta.sma(volume, 20)
@@ -229,8 +233,12 @@ sell_trigger = trend_sell_trigger or safe_ping_sell
 
 var int last_sig_side = 0
 var int last_sig_bar  = 0
-valid_buy  = buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and in_date and barstate.isconfirmed
-valid_sell = sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and in_date and barstate.isconfirmed
+valid_buy  = buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and in_date
+valid_sell = sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and in_date
+
+// Vẽ mũi tên tín hiệu rõ ràng trên biểu đồ
+plotshape(valid_buy, title="Mũi Tên BUY", style=shape.labelup, location=location.belowbar, color=#10b981, text="BUY", textcolor=color.white, size=size.normal)
+plotshape(valid_sell, title="Mũi Tên SELL", style=shape.labeldown, location=location.abovebar, color=#f43f5e, text="SELL", textcolor=color.white, size=size.normal)
 
 
 // ==============================================================================
@@ -272,9 +280,9 @@ if valid_buy and strategy.position_size == 0
         
     strat_tp2_price := close + (sl_dist * (rr_ratio + 1.0))
     
-    // Vào 2 vị thế: Vị thế 1 chốt ở TP1, Vị thế 2 gồng tới TP2 với mốc BE
-    strategy.entry("BUY_1", strategy.long, qty=1, comment="Buy TP1 (50%)")
-    strategy.entry("BUY_2", strategy.long, qty=1, comment="Buy Runner (50%)")
+    // Khớp lệnh 2 vị thế: 1 vị thế cho TP1, 1 vị thế cho Runner
+    strategy.entry("BUY_1", strategy.long, qty=1, comment="Buy TP1")
+    strategy.entry("BUY_2", strategy.long, qty=1, comment="Buy Runner")
 
 else if valid_sell and strategy.position_size == 0
     last_sig_side := -1
@@ -306,9 +314,8 @@ else if valid_sell and strategy.position_size == 0
         
     strat_tp2_price := close - (sl_dist * (rr_ratio + 1.0))
     
-    // Vào 2 vị thế SELL
-    strategy.entry("SELL_1", strategy.short, qty=1, comment="Sell TP1 (50%)")
-    strategy.entry("SELL_2", strategy.short, qty=1, comment="Sell Runner (50%)")
+    strategy.entry("SELL_1", strategy.short, qty=1, comment="Sell TP1")
+    strategy.entry("SELL_2", strategy.short, qty=1, comment="Sell Runner")
 
 
 // ==============================================================================
