@@ -2476,22 +2476,26 @@ div:has(> [class*="netlify"]),
 
   /* ==================== 6. IOS BOTTOM SHEET MODALS ==================== */
   .modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100000 !important;
     align-items: flex-end !important;
     justify-content: center !important;
     padding: 0 !important;
-    background: rgba(0, 0, 0, 0.75) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+    background: rgba(0, 0, 0, 0.78) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
   }
 
   .ios-drag-handle {
     display: block !important;
-    width: 40px !important;
+    width: 44px !important;
     height: 5px !important;
     border-radius: 999px !important;
-    background: rgba(255, 255, 255, 0.28) !important;
+    background: rgba(255, 255, 255, 0.32) !important;
     margin: 2px auto 14px !important;
     cursor: pointer !important;
+    touch-action: none !important;
   }
 
   .modal-card {
@@ -2503,12 +2507,15 @@ div:has(> [class*="netlify"]),
     border-left: none !important;
     border-right: none !important;
     padding: 16px 18px !important;
-    max-height: 88vh !important;
-    overflow-y: auto !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 26px) !important;
+    max-height: 85vh !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px) !important;
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85) !important;
     transform: translateY(100%) !important;
-    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 
   .modal-overlay.active .modal-card {
@@ -2518,6 +2525,11 @@ div:has(> [class*="netlify"]),
   /* More Menu Bottom Sheet */
   .modal-sheet-menu {
     max-height: 85vh !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 50px) !important;
   }
 
   .more-menu-grid {
@@ -2525,7 +2537,8 @@ div:has(> [class*="netlify"]),
     flex-direction: column !important;
     gap: 9px !important;
     margin-top: 14px !important;
-    padding-bottom: 8px !important;
+    padding-bottom: 24px !important;
+    touch-action: pan-y !important;
   }
 
   .more-menu-item {
@@ -2541,6 +2554,8 @@ div:has(> [class*="netlify"]),
     cursor: pointer !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     width: 100% !important;
+    touch-action: pan-y !important;
+    flex-shrink: 0 !important;
   }
 
   .more-menu-item:hover,

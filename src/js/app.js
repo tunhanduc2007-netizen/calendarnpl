@@ -948,33 +948,49 @@ class AppController {
       }, { passive: true });
     }
 
-    // iOS Bottom Sheet pull-down-to-dismiss gesture on drag handle
-    document.querySelectorAll('.ios-drag-handle').forEach(handle => {
+    // iOS Bottom Sheet pull-down-to-dismiss gesture on drag handle & header
+    document.querySelectorAll('.modal-card').forEach(card => {
+      const modal = card.closest('.modal-overlay');
+      const handles = card.querySelectorAll('.ios-drag-handle, .modal-header');
       let dragStartY = 0;
-      handle.addEventListener('touchstart', (e) => {
-        dragStartY = e.touches[0].clientY;
-      }, { passive: true });
+      let isDragging = false;
 
-      handle.addEventListener('touchmove', (e) => {
-        const currentY = e.touches[0].clientY;
-        const deltaY = currentY - dragStartY;
-        if (deltaY > 0) {
-          const card = handle.closest('.modal-card');
-          if (card) card.style.transform = `translateY(${deltaY}px)`;
-        }
-      }, { passive: true });
+      handles.forEach(handle => {
+        handle.addEventListener('touchstart', (e) => {
+          dragStartY = e.touches[0].clientY;
+          isDragging = true;
+          card.style.transition = 'none';
+        }, { passive: true });
 
-      handle.addEventListener('touchend', (e) => {
-        const currentY = e.changedTouches[0].clientY;
-        const deltaY = currentY - dragStartY;
-        const modal = handle.closest('.modal-overlay');
-        const card = handle.closest('.modal-card');
-        if (deltaY > 75 && modal) {
-          if (navigator.vibrate) navigator.vibrate(10);
-          modal.classList.remove('active');
-        }
-        if (card) card.style.transform = '';
-      }, { passive: true });
+        handle.addEventListener('touchmove', (e) => {
+          if (!isDragging) return;
+          const currentY = e.touches[0].clientY;
+          const deltaY = currentY - dragStartY;
+          if (deltaY > 0) {
+            card.style.transform = `translateY(${deltaY}px)`;
+          }
+        }, { passive: true });
+
+        const endDrag = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          card.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+          const currentY = e.changedTouches ? e.changedTouches[0].clientY : dragStartY;
+          const deltaY = currentY - dragStartY;
+          if (deltaY > 70 && modal) {
+            if (navigator.vibrate) navigator.vibrate(10);
+            modal.classList.remove('active');
+            setTimeout(() => {
+              card.style.transform = '';
+            }, 300);
+          } else {
+            card.style.transform = '';
+          }
+        };
+
+        handle.addEventListener('touchend', endDrag, { passive: true });
+        handle.addEventListener('touchcancel', endDrag, { passive: true });
+      });
     });
   }
 
