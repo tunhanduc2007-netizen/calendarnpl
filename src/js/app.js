@@ -287,6 +287,24 @@ class AppController {
           this.switchView('arena');
         });
       }
+
+      const btnQuickEdit = document.getElementById('btn-quick-edit-capital');
+      if (btnQuickEdit) {
+        btnQuickEdit.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentCap = this.arenaEngine.settings.capital || 100;
+          const input = prompt('Nhập số vốn tài khoản của bạn (USD):', currentCap);
+          if (input !== null && input.trim() !== '') {
+            const newCap = parseFloat(input);
+            if (!isNaN(newCap) && newCap > 0) {
+              this.arenaEngine.saveSettings({ capital: newCap });
+              this.updateAccountBadge();
+              this.refreshCurrentView();
+            }
+          }
+        });
+      }
     }
   }
 
@@ -811,12 +829,18 @@ class AppController {
     if (saveBtn) {
       saveBtn.addEventListener('click', () => {
         const active = DataService.getActiveAccount();
+        const initialVal = parseFloat(document.getElementById('acc-initial').value) || 100;
+        const gainVal = parseFloat(document.getElementById('acc-gain').value) || 0;
         const updated = {
-          name: document.getElementById('acc-name').value,
-          initialBalance: parseFloat(document.getElementById('acc-initial').value) || 200000,
-          activeGain: parseFloat(document.getElementById('acc-gain').value) || 110000
+          name: document.getElementById('acc-name').value || 'Tài Khoản Giao Dịch Chính',
+          initialBalance: initialVal,
+          activeGain: gainVal,
+          currentBalance: initialVal + gainVal
         };
         DataService.updateAccount(active.id, updated);
+        if (this.arenaEngine) {
+          this.arenaEngine.saveSettings({ capital: initialVal });
+        }
         modal.classList.remove('active');
         this.updateAccountBadge();
         this.refreshCurrentView();
@@ -850,7 +874,7 @@ class AppController {
     
     const gainNum = active.activeGain || 0;
     const gainStr = DataService.formatCurrency(gainNum, true);
-    const balanceStr = DataService.formatCurrency(active.currentBalance || active.initialBalance || 100000, false);
+    const balanceStr = DataService.formatCurrency(active.currentBalance || active.initialBalance || 100, false);
 
     if (badgeActivePnl) {
       badgeActivePnl.textContent = gainStr;

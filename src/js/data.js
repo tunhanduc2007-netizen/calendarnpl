@@ -18,8 +18,8 @@ const defaultAccounts = [
   { 
     id: 'acc_main', 
     name: 'Tài Khoản Giao Dịch Chính', 
-    initialBalance: 100000, 
-    currentBalance: 100000, 
+    initialBalance: 100, 
+    currentBalance: 100, 
     activeGain: 0, 
     currency: '$' 
   }

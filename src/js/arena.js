@@ -14,19 +14,25 @@ export class ArenaEngine {
   loadSettings() {
     try {
       const activeAccount = this.dataService.getActiveAccount();
-      const defaultCapital = activeAccount && activeAccount.currentBalance ? activeAccount.currentBalance : 1000;
+      const accountCap = activeAccount && (activeAccount.initialBalance || activeAccount.currentBalance)
+        ? Number(activeAccount.initialBalance || activeAccount.currentBalance)
+        : 100;
       
       const saved = localStorage.getItem(ARENA_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!parsed.capital || parsed.capital <= 0) parsed.capital = defaultCapital;
+        // If the user changed the account initialBalance in Account Settings, prioritize activeAccount capital
+        if (activeAccount && activeAccount.initialBalance && Number(activeAccount.initialBalance) !== Number(parsed.capital)) {
+          parsed.capital = Number(activeAccount.initialBalance);
+        }
+        if (!parsed.capital || parsed.capital <= 0) parsed.capital = accountCap;
         if (!parsed.riskPct) parsed.riskPct = 1.0;
         parsed.slPoints = 5.0; // Luôn đảm bảo SL 5 giá
         return parsed;
       }
 
       return {
-        capital: defaultCapital,
+        capital: accountCap,
         riskPct: 1.0,
         slPoints: 5.0,
         unlockedBadges: ['badge_novice']
@@ -34,7 +40,7 @@ export class ArenaEngine {
     } catch (e) {
       console.error('Error loading Arena settings:', e);
       return {
-        capital: 1000,
+        capital: 100,
         riskPct: 1.0,
         slPoints: 5.0,
         unlockedBadges: ['badge_novice']
@@ -45,11 +51,28 @@ export class ArenaEngine {
   saveSettings(newSettings) {
     this.settings = { ...this.settings, ...newSettings, slPoints: 5.0 };
     localStorage.setItem(ARENA_STORAGE_KEY, JSON.stringify(this.settings));
+
+    // Also sync back to active account if capital was modified in Arena
+    if (newSettings.capital) {
+      const activeAccount = this.dataService.getActiveAccount();
+      if (activeAccount && Number(activeAccount.initialBalance) !== Number(newSettings.capital)) {
+        this.dataService.updateAccount(activeAccount.id, {
+          initialBalance: Number(newSettings.capital),
+          currentBalance: Number(newSettings.capital) + Number(activeAccount.activeGain || 0)
+        });
+      }
+    }
   }
 
   // ==================== CÔNG THỨC TOÁN HỌC & RỦI RO ====================
   getMetrics() {
-    const capital = Number(this.settings.capital) || 1000;
+    const activeAccount = this.dataService.getActiveAccount();
+    let capital = Number(this.settings.capital) || 100;
+    if (activeAccount && activeAccount.initialBalance && Number(activeAccount.initialBalance) !== Number(this.settings.capital)) {
+      capital = Number(activeAccount.initialBalance);
+      this.settings.capital = capital;
+      this.saveSettings({ capital });
+    }
     const riskPct = Number(this.settings.riskPct) || 1.0;
     const slPts = 5.0; // 5 giá Vàng
 
@@ -297,9 +320,9 @@ export class ArenaEngine {
         <div class="arena-quick-body">
           <div class="arena-col-capital">
             <span class="arena-label">Vốn & Khối Lượng</span>
-            <div class="arena-val-lot">
+            <div class="arena-val-lot" id="btn-quick-edit-capital" style="cursor: pointer;" title="Chạm để đổi số vốn ($)">
               <strong class="text-accent">${m.dynamicLot} Lot</strong>
-              <small class="text-muted">(SL: 5 giá • Vốn: ${curr(m.capital)})</small>
+              <small class="text-muted">(SL: 5 giá • Vốn: <span style="text-decoration: underline; text-underline-offset: 2px;">${curr(m.capital)}</span> ✏️)</small>
             </div>
           </div>
 
@@ -396,7 +419,7 @@ export class ArenaEngine {
               <label for="arena-capital-input">Số Vốn Hiện Tại ($)</label>
               <div class="input-with-symbol">
                 <span class="input-symbol">$</span>
-                <input type="number" id="arena-capital-input" class="arena-input" value="${m.capital}" min="50" step="50" placeholder="1000">
+                <input type="number" id="arena-capital-input" class="arena-input" value="${m.capital}" min="10" step="10" placeholder="100">
               </div>
               <small class="input-hint">Chỉ cần nhập vốn, hệ thống sẽ tính mọi thứ!</small>
             </div>
@@ -521,7 +544,7 @@ export class ArenaEngine {
 
     if (btnSave && inputCapital && selectRisk) {
       btnSave.addEventListener('click', () => {
-        const newCap = parseFloat(inputCapital.value) || 1000;
+        const newCap = parseFloat(inputCapital.value) || 100;
         const newRisk = parseFloat(selectRisk.value) || 1.0;
         this.saveSettings({ capital: newCap, riskPct: newRisk });
         
