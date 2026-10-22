@@ -190,15 +190,33 @@ if timeframe.change("D")
     array.clear(arr_price_int)
     array.clear(arr_vol_bin)
 
-int p_key = int(math.round(hlc3 / 0.5))
-int found_idx = array.indexof(arr_price_int, p_key)
+// Phân bổ volume vào các mức giá theo bước 0.5:
+// Đỉnh High (25%), Đáy Low (25%) và Thân Close (50%)
 float bar_v = nz(volume, 1.0)
+int k_hi = int(math.round(high / 0.5))
+int k_lo = int(math.round(low / 0.5))
+int k_cl = int(math.round(close / 0.5))
 
-if found_idx >= 0
-    array.set(arr_vol_bin, found_idx, array.get(arr_vol_bin, found_idx) + bar_v)
+int idx_cl = array.indexof(arr_price_int, k_cl)
+if idx_cl >= 0
+    array.set(arr_vol_bin, idx_cl, array.get(arr_vol_bin, idx_cl) + (bar_v * 0.50))
 else
-    array.push(arr_price_int, p_key)
-    array.push(arr_vol_bin, bar_v)
+    array.push(arr_price_int, k_cl)
+    array.push(arr_vol_bin, bar_v * 0.50)
+
+int idx_hi = array.indexof(arr_price_int, k_hi)
+if idx_hi >= 0
+    array.set(arr_vol_bin, idx_hi, array.get(arr_vol_bin, idx_hi) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_hi)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+int idx_lo = array.indexof(arr_price_int, k_lo)
+if idx_lo >= 0
+    array.set(arr_vol_bin, idx_lo, array.get(arr_vol_bin, idx_lo) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_lo)
+    array.push(arr_vol_bin, bar_v * 0.25)
 
 if array.size(arr_vol_bin) > 0
     int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
@@ -206,13 +224,13 @@ if array.size(arr_vol_bin) > 0
         int poc_key = array.get(arr_price_int, best_i)
         cur_poc_val := float(poc_key) * 0.5
         
-        // VAH & VAL 70%
+        // VAH & VAL 70% với loop_guard 350
         float total_v  = array.sum(arr_vol_bin)
         float target_v = total_v * 0.70
         float acc_v    = array.get(arr_vol_bin, best_i)
         int up_k       = poc_key
         int dn_k       = poc_key
-        int loop_guard = 150
+        int loop_guard = 350
         while acc_v < target_v and loop_guard > 0
             loop_guard := loop_guard - 1
             int test_up = up_k + 1
@@ -221,7 +239,7 @@ if array.size(arr_vol_bin) > 0
             int idx_d   = array.indexof(arr_price_int, test_dn)
             float vu    = idx_u >= 0 ? array.get(arr_vol_bin, idx_u) : 0.0
             float vd    = idx_d >= 0 ? array.get(arr_vol_bin, idx_d) : 0.0
-            if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 100 and poc_key - test_dn > 100)
+            if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 200 and poc_key - test_dn > 200)
                 break
             if vu >= vd and vu > 0.0
                 acc_v := acc_v + vu

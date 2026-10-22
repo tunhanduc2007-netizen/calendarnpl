@@ -229,16 +229,33 @@ if is_new_day
     array.clear(arr_vol_bin)
     cur_poc_bar := bar_index
 
-// Gom volume vào mức giá làm tròn theo poc_step
-int p_key = int(math.round(hlc3 / poc_step))
-int found_idx = array.indexof(arr_price_int, p_key)
+// Phân bổ volume vào các mức giá theo poc_step:
+// Đỉnh High (25%), Đáy Low (25%) và Thân Close (50%) giúp Volume Profile mịn màng chuẩn xác
 float bar_v = nz(volume, 1.0)
+int k_hi = int(math.round(high / poc_step))
+int k_lo = int(math.round(low / poc_step))
+int k_cl = int(math.round(close / poc_step))
 
-if found_idx >= 0
-    array.set(arr_vol_bin, found_idx, array.get(arr_vol_bin, found_idx) + bar_v)
+int idx_cl = array.indexof(arr_price_int, k_cl)
+if idx_cl >= 0
+    array.set(arr_vol_bin, idx_cl, array.get(arr_vol_bin, idx_cl) + (bar_v * 0.50))
 else
-    array.push(arr_price_int, p_key)
-    array.push(arr_vol_bin, bar_v)
+    array.push(arr_price_int, k_cl)
+    array.push(arr_vol_bin, bar_v * 0.50)
+
+int idx_hi = array.indexof(arr_price_int, k_hi)
+if idx_hi >= 0
+    array.set(arr_vol_bin, idx_hi, array.get(arr_vol_bin, idx_hi) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_hi)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+int idx_lo = array.indexof(arr_price_int, k_lo)
+if idx_lo >= 0
+    array.set(arr_vol_bin, idx_lo, array.get(arr_vol_bin, idx_lo) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_lo)
+    array.push(arr_vol_bin, bar_v * 0.25)
 
 if array.size(arr_vol_bin) > 0
     int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
@@ -246,14 +263,14 @@ if array.size(arr_vol_bin) > 0
         int poc_key = array.get(arr_price_int, best_i)
         cur_poc_val := float(poc_key) * poc_step
         
-        // Tính toán VAH & VAL (70% Volume bao quanh POC)
+        // Tính toán VAH & VAL (70% Volume bao quanh POC với loop_guard 350 bao trọn biên độ Vàng)
         if show_va
             float total_v  = array.sum(arr_vol_bin)
             float target_v = total_v * 0.70
             float acc_v    = array.get(arr_vol_bin, best_i)
             int up_k       = poc_key
             int dn_k       = poc_key
-            int loop_guard = 150
+            int loop_guard = 350
             
             while acc_v < target_v and loop_guard > 0
                 loop_guard := loop_guard - 1
@@ -264,7 +281,7 @@ if array.size(arr_vol_bin) > 0
                 float vu    = idx_u >= 0 ? array.get(arr_vol_bin, idx_u) : 0.0
                 float vd    = idx_d >= 0 ? array.get(arr_vol_bin, idx_d) : 0.0
                 
-                if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 100 and poc_key - test_dn > 100)
+                if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 200 and poc_key - test_dn > 200)
                     break
                     
                 if vu >= vd and vu > 0.0
