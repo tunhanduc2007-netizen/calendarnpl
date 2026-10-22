@@ -560,6 +560,7 @@ if (valid_buy or valid_sell) and show_signals
     
     float sl_val  = na
     float tp_val  = na
+    float sl_dist = na
     string tp_tag = ""
     
     if valid_buy
@@ -569,7 +570,7 @@ if (valid_buy or valid_sell) and show_signals
         else
             sl_val := entry_val - sl_fixed_pts
             
-        float sl_dist = math.abs(entry_val - sl_val)
+        sl_dist := math.abs(entry_val - sl_val)
         float min_tp_dist = sl_dist * min_rr_ratio
 
         // TP thông minh: hướng về POC hoặc Kháng cự / Đỉnh Ngày, bắt buộc đạt R:R tối thiểu >= min_rr_ratio (1.5)
@@ -597,7 +598,7 @@ if (valid_buy or valid_sell) and show_signals
         else
             sl_val := entry_val + sl_fixed_pts
             
-        float sl_dist = math.abs(sl_val - entry_val)
+        sl_dist := math.abs(sl_val - entry_val)
         float min_tp_dist = sl_dist * min_rr_ratio
 
         // TP thông minh: hướng về POC hoặc Hỗ trợ / Đáy Ngày, bắt buộc đạt R:R tối thiểu >= min_rr_ratio (1.5)
@@ -689,7 +690,7 @@ if (valid_buy or valid_sell) and show_signals
     string alert_msg = "🔥 [TNDUCK PRO] " + action_str + grade_name + " - " + syminfo.ticker + 
                        "\n• Giá vào: " + str.tostring(entry_val, "#.#") + 
                        "\n• TP1: " + str.tostring(tp_val, "#.#") + 
-                       "\n• Mốc BE (+1.5R): " + str.tostring(be_target, "#.#") + 
+                       "\n• Mốc BE (Hòa vốn): " + str.tostring(be_target, "#.#") + 
                        "\n• SL: " + str.tostring(sl_val, "#.#") + 
                        "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume")
     alert(alert_msg, alert.freq_once_per_bar_close)
