@@ -6,6 +6,7 @@ import { DataService } from './data.js';
 import { CalendarEngine } from './calendar.js';
 import { DashboardEngine } from './dashboard.js';
 import { JournalEngine } from './journal.js';
+import { ArenaEngine } from './arena.js';
 
 class AppController {
   constructor() {
@@ -13,6 +14,8 @@ class AppController {
     this.selectedDayDate = null;
 
     // Initialize View Engines
+    this.arenaEngine = new ArenaEngine(DataService);
+
     this.calendarEngine = new CalendarEngine(DataService, (dateStr, dayData) => {
       this.openDayDetailModal(dateStr, dayData);
     });
@@ -43,8 +46,9 @@ class AppController {
     this.initCloudSync();
     this.bindTouchGestures();
 
-    // Render Initial View (Calendar)
+    // Render Initial View (Calendar) & Arena Quick Widget
     this.calendarEngine.render();
+    this.renderArenaWidget();
     console.log('tnduck PnL Web App Initialized Cleanly!');
   }
 
@@ -59,7 +63,8 @@ class AppController {
       stats: 'Stats',
       journal: 'Trade Journal',
       insights: 'Trading Insights',
-      diary: 'Trade Diary'
+      diary: 'Trade Diary',
+      arena: 'Mục Tiêu & Leo Rank'
     };
 
     navItems.forEach(item => {
@@ -138,6 +143,7 @@ class AppController {
     switch (viewId) {
       case 'calendar':
         this.calendarEngine.render();
+        this.renderArenaWidget();
         break;
       case 'dashboard':
         this.dashboardEngine.render();
@@ -154,11 +160,29 @@ class AppController {
       case 'diary':
         this.journalEngine.renderDiary();
         break;
+      case 'arena':
+        this.arenaEngine.renderFullView();
+        break;
     }
   }
 
   refreshCurrentView() {
     this.renderView(this.currentView);
+    this.renderArenaWidget();
+  }
+
+  renderArenaWidget() {
+    const container = document.getElementById('arena-quick-widget-container');
+    if (container && this.arenaEngine) {
+      container.innerHTML = this.arenaEngine.renderQuickWidget();
+      const btnOpen = document.getElementById('btn-open-arena-view');
+      if (btnOpen) {
+        btnOpen.addEventListener('click', () => {
+          const navArena = document.querySelector('.sidebar-nav .nav-item[data-view="arena"]');
+          if (navArena) navArena.click();
+        });
+      }
+    }
   }
 
   // ==================== CALENDAR HEADER & MONTH NAV ====================

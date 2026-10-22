@@ -97,6 +97,18 @@
           <span>Phân Tích</span>
         </button>
 
+        <!-- 6. Arena: Mục Tiêu & Rank -->
+        <button class="nav-item" data-view="arena" title="Đấu Trường Mục Tiêu & Leo Rank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1h12v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+          </svg>
+          <span>Mục Tiêu & Rank</span>
+        </button>
+
         <!-- Desktop-Only Nav Items -->
         <button class="nav-item desktop-only-nav" data-view="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -216,6 +228,9 @@
 
       <!-- ==================== VIEW 1: CALENDAR (DEFAULT) ==================== -->
       <section class="view-container active" id="view-calendar">
+        <!-- Live Trading Arena & Daily Target HUD Banner -->
+        <div id="arena-quick-widget-container"></div>
+
         <!-- Monthly Summary Banner matching screenshot -->
         <div class="monthly-summary-card">
           <div class="summary-left">
@@ -316,6 +331,9 @@
 
       <!-- ==================== VIEW 6: TRADE DIARY ==================== -->
       <section class="view-container" id="view-diary"></section>
+
+      <!-- ==================== VIEW 7: ARENA (MỤC TIÊU & LEO RANK) ==================== -->
+      <section class="view-container" id="view-arena"></section>
     </div>
   </div>
 
