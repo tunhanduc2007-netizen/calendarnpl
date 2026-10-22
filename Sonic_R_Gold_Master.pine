@@ -45,7 +45,26 @@ p_close = plot(show_sonic ? ema_close : na, "Dragon Wave", color=color.new(#38bd
 p_low   = plot(show_sonic ? ema_low : na, "Dragon Low", color=color.new(#00f0ff, 50), linewidth=1, display=display.all - display.status_line)
 fill(p_high, p_low, color=color.new(#0284c7, 92), title="Dragon Fill")
 
-plot(show_ema89 ? ema_89 : na, "EMA 89 Gold", color=#fbbf24, linewidth=2, display=display.all - display.status_line)
+// --- ĐƯỜNG XU HƯỚNG EMA 89 DÀY ĐẬM, PHÁT SÁNG & ĐỔI MÀU THÔNG MINH ---
+bool ema89_falling = ta.falling(ema_89, 2)
+bool ema89_rising  = ta.rising(ema_89, 2)
+color col_ema89    = ema89_falling ? #f43f5e : (ema89_rising ? #10b981 : #fbbf24)
+
+// 1. Lớp Glow phát sáng tỏa bóng phía sau
+plot(show_ema89 ? ema_89 : na, "EMA 89 Glow", color=color.new(col_ema89, 75), linewidth=6, display=display.all - display.status_line)
+// 2. Đường chính DÀY ĐẬM RÕ NÉT (linewidth=3)
+plot(show_ema89 ? ema_89 : na, "EMA 89 Master", color=col_ema89, linewidth=3, display=display.all - display.status_line)
+
+// 3. Nhãn định hướng kéo dài ở đầu nến (bên phải biểu đồ)
+var label lbl_ema89_tag = na
+if show_ema89 and (barstate.islast or barstate.isconfirmed)
+    label.delete(lbl_ema89_tag)
+    string txt_trend_tag = ema89_falling ? " 📉 EMA 89: GIẢM" : (ema89_rising ? " 📈 EMA 89: TĂNG" : " ⚖️ EMA 89: NGANG")
+    lbl_ema89_tag := label.new(bar_index + 4, ema_89, str.tostring(ema_89, "#.#") + txt_trend_tag, 
+                               color=color.new(col_ema89, 15), 
+                               textcolor=color.white, 
+                               style=label.style_label_left, 
+                               size=size.small)
 
 
 // ==============================================================================
