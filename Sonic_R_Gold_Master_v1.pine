@@ -1,0 +1,682 @@
+//@version=6
+indicator("Chỉ báo tnduck [Sonic R & Volume Profile]", shorttitle="Chỉ báo tnduck", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+// ==============================================================================
+// 1. CÀI ĐẶT THÔNG SỐ (TINH GỌN, HIỆU QUẢ CAO)
+// ==============================================================================
+grp_sonic   = "=== 1. DẢI RỒNG SONIC R & XU HƯỚNG ==="
+show_sonic  = input.bool(true, "Hiển thị Dải Rồng Sonic R (EMA 34)", group=grp_sonic, display=display.none)
+show_ema89  = input.bool(true, "Hiển thị Đường Xu Hướng Vàng (EMA 89)", group=grp_sonic, display=display.none)
+len_dragon  = input.int(34, "Dragon Length (EMA 34)", minval=1, group=grp_sonic, display=display.none)
+len_trend   = input.int(89, "Trend Length (EMA 89 Gold)", minval=1, group=grp_sonic, display=display.none)
+
+grp_sr      = "=== 2. CẢN HỖ TRỢ & KHÁNG CỰ PIVOT & ĐỈNH/ĐÁY PHIÊN ==="
+show_sr     = input.bool(true, "Hiển thị Kháng Cự (Đỏ) & Hỗ Trợ (Xanh)", group=grp_sr, display=display.none)
+sr_len      = input.int(4, "Độ nhạy Cản Pivot (Chuẩn Swing SMC)", minval=2, maxval=10, group=grp_sr, display=display.none)
+sr_flip     = input.bool(true, "Cơ Chế S/R Flip (Đổi Cản Khi Bị Phá & Không Kéo Xuyên Nến)", group=grp_sr, display=display.none)
+show_hl_day = input.bool(true, "Hiển thị Đỉnh & Đáy Hôm Nay (Kháng Cự / Hỗ Trợ Phiên)", group=grp_sr, display=display.none)
+
+grp_vp      = "=== 3. VOLUME PROFILE (NAM CHÂM POC & VÙNG GIÁ TRỊ) ==="
+show_poc    = input.bool(true, "Hiển thị Đường POC Hôm Nay (Nam Châm Vàng)", group=grp_vp, display=display.none)
+show_prev_poc = input.bool(true, "Hiển thị Đường POC Hôm Qua (Nam Châm Tím)", group=grp_vp, display=display.none)
+show_va     = input.bool(true, "Hiển thị Vùng Giá Trị VAH / VAL (70% Volume)", group=grp_vp, display=display.none)
+show_va_box = input.bool(true, "Tô Nền Vùng Giá Trị 70% (Mờ Êm Mắt)", group=grp_vp, display=display.none)
+poc_step    = input.float(0.5, "Bước chia giá POC ($)", options=[0.25, 0.5, 1.0], group=grp_vp, display=display.none)
+
+grp_sig     = "=== 4. TÍN HIỆU VÀO LỆNH (MUA / BÁN) ==="
+show_signals= input.bool(true, "Hiển thị Tín Hiệu Mua / Bán", group=grp_sig, display=display.none)
+lbl_theme   = input.string("🏛️ Chuyên Nghiệp (Institutional Pro)", "Phong Cách Nhãn Tín Hiệu", options=["🏛️ Chuyên Nghiệp (Institutional Pro)", "⚡ Tối Giản (1 Dòng)", "🔥 Cổ Điển"], group=grp_sig, display=display.none)
+tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig, display=display.none)
+allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig, display=display.none)
+require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến (Chống Rút Râu Ảo)", group=grp_sig, display=display.none)
+grade_filter= input.bool(true, "Phân Hạng Kèo A+ / B (Cảnh Báo Giảm Lot)", group=grp_sig, display=display.none)
+filter_kz   = input.bool(true, "Bật Lá Chắn Khung Giờ Vàng (Phiên Âu 14h-18h & Mỹ 19h30-23h)", group=grp_sig, display=display.none)
+show_be_line= input.bool(true, "Vẽ Mốc BE Khóa Hòa Vốn (+1.5R) & Đường TP/SL", group=grp_sig, display=display.none)
+sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Tối Đa (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
+rr_ratio    = input.float(2.0, "Tỷ lệ Ăn Lời R:R (Nếu chọn R:R cố định)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
+
+
+// ==============================================================================
+// 2. DẢI RỒNG SONIC R & EMA 89 (TRỰC QUAN, ÊM DỊU, KHÔNG LÓA MẮT)
+// ==============================================================================
+ema_high   = ta.ema(high, len_dragon)
+ema_close  = ta.ema(close, len_dragon)
+ema_low    = ta.ema(low, len_dragon)
+ema_89     = ta.ema(close, len_trend)
+
+p_high  = plot(show_sonic ? ema_high : na, "Dragon High", color=color.new(#00f0ff, 50), linewidth=1, display=display.all - display.status_line)
+p_close = plot(show_sonic ? ema_close : na, "Dragon Wave", color=color.new(#38bdf8, 20), linewidth=2, display=display.all - display.status_line)
+p_low   = plot(show_sonic ? ema_low : na, "Dragon Low", color=color.new(#00f0ff, 50), linewidth=1, display=display.all - display.status_line)
+fill(p_high, p_low, color=color.new(#0284c7, 92), title="Dragon Fill")
+
+// --- ĐƯỜNG XU HƯỚNG EMA 89 DÀY ĐẬM, PHÁT SÁNG & ĐỔI MÀU THÔNG MINH ---
+bool ema89_falling = ta.falling(ema_89, 2)
+bool ema89_rising  = ta.rising(ema_89, 2)
+color col_ema89    = ema89_falling ? #f43f5e : (ema89_rising ? #10b981 : #fbbf24)
+
+// 1. Lớp Glow phát sáng tỏa bóng phía sau
+plot(show_ema89 ? ema_89 : na, "EMA 89 Glow", color=color.new(col_ema89, 75), linewidth=6, display=display.all - display.status_line)
+// 2. Đường chính DÀY ĐẬM RÕ NÉT (linewidth=3)
+plot(show_ema89 ? ema_89 : na, "EMA 89 Master", color=col_ema89, linewidth=3, display=display.all - display.status_line)
+
+// 3. Nhãn định hướng kéo dài ở đầu nến (bên phải biểu đồ)
+var label lbl_ema89_tag = na
+if show_ema89 and (barstate.islast or barstate.isconfirmed)
+    label.delete(lbl_ema89_tag)
+    string txt_trend_tag = ema89_falling ? " 📉 EMA 89: GIẢM" : (ema89_rising ? " 📈 EMA 89: TĂNG" : " ⚖️ EMA 89: NGANG")
+    lbl_ema89_tag := label.new(bar_index + 4, ema_89, str.tostring(ema_89, "#.#") + txt_trend_tag, 
+                               color=color.new(col_ema89, 15), 
+                               textcolor=color.white, 
+                               style=label.style_label_left, 
+                               size=size.small)
+
+
+// ==============================================================================
+// 3. CẢN HỖ TRỢ & KHÁNG CỰ TỰ ĐỘNG & ĐỈNH / ĐÁY PHIÊN TOÀN CẦU
+// ==============================================================================
+bool is_new_day = timeframe.change("D")
+
+// Khai báo biến Cản Pivot trước để toàn bộ Section 3 sử dụng
+var line  line_res = na
+var line  line_sup = na
+var label lbl_res  = na
+var label lbl_sup  = na
+var float cur_res_price = na
+var float cur_sup_price = na
+
+// A. MỐC ĐỈNH & ĐÁY HÔM NAY (CHUẨN THANH KHOẢN PHIÊN TOÀN CẦU)
+var float day_high_price = na
+var float day_low_price  = na
+var int   day_start_bar  = na
+var line  line_d_hi      = na
+var line  line_d_lo      = na
+var label lbl_d_hi       = na
+var label lbl_d_lo       = na
+
+if is_new_day
+    day_high_price := high
+    day_low_price  := low
+    day_start_bar  := bar_index
+else
+    day_high_price := math.max(nz(day_high_price, high), high)
+    day_low_price  := math.min(nz(day_low_price, low), low)
+
+// Kiểm tra xem Đỉnh/Đáy ngày có sát vùng với Kháng Cự / Hỗ Trợ Pivot không (Dung sai gộp: <= 2.0 giá Vàng)
+bool is_same_res = show_sr and not na(cur_res_price) and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+bool is_same_sup = show_sr and not na(cur_sup_price) and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+
+// Vẽ Đỉnh Hôm Nay
+if show_hl_day and not na(day_high_price)
+    int s_bar = na(day_start_bar) ? bar_index - 10 : day_start_bar
+    if is_same_res
+        // Đã gộp chung với Kháng Cự -> Xóa sạch đường và nhãn đỉnh riêng để chống đè chữ 100%
+        line.delete(line_d_hi)
+        label.delete(lbl_d_hi)
+        line_d_hi := na
+        lbl_d_hi  := na
+    else
+        // Khi đứng riêng biệt: Vẽ nhãn so le bên phải X = bar_index + 28 để không bao giờ chạm cản khác
+        line.delete(line_d_hi)
+        label.delete(lbl_d_hi)
+        line_d_hi := line.new(s_bar, day_high_price, bar_index + 28, day_high_price, color=color.new(#f43f5e, 30), width=1, style=line.style_dotted)
+        lbl_d_hi  := label.new(bar_index + 28, day_high_price, "👑 ĐỈNH HÔM NAY: " + str.tostring(day_high_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#fb7185, style=label.style_label_left, size=size.small)
+
+if show_hl_day and not na(line_d_hi)
+    line.set_x2(line_d_hi, bar_index + 28)
+    if not na(lbl_d_hi)
+        label.set_x(lbl_d_hi, bar_index + 28)
+
+// Vẽ Đáy Hôm Nay
+if show_hl_day and not na(day_low_price)
+    int s_bar = na(day_start_bar) ? bar_index - 10 : day_start_bar
+    if is_same_sup
+        // Đã gộp chung với Hỗ Trợ -> Xóa sạch đường và nhãn đáy riêng để chống đè chữ 100%
+        line.delete(line_d_lo)
+        label.delete(lbl_d_lo)
+        line_d_lo := na
+        lbl_d_lo  := na
+    else
+        // Khi đứng riêng biệt: Vẽ nhãn so le bên phải X = bar_index + 28 để không bao giờ chạm cản khác
+        line.delete(line_d_lo)
+        label.delete(lbl_d_lo)
+        line_d_lo := line.new(s_bar, day_low_price, bar_index + 28, day_low_price, color=color.new(#10b981, 30), width=1, style=line.style_dotted)
+        lbl_d_lo  := label.new(bar_index + 28, day_low_price, "🛡️ ĐÁY HÔM NAY: " + str.tostring(day_low_price, "#.##"), color=color.new(#10b981, 100), textcolor=#34d399, style=label.style_label_left, size=size.small)
+
+if show_hl_day and not na(line_d_lo)
+    line.set_x2(line_d_lo, bar_index + 28)
+    if not na(lbl_d_lo)
+        label.set_x(lbl_d_lo, bar_index + 28)
+
+// B. CẢN HỖ TRỢ & KHÁNG CỰ PIVOT SWING SMC (ĐỘ NHẠY CAO & S/R FLIP)
+sr_hi = ta.pivothigh(high, sr_len, sr_len)
+sr_lo = ta.pivotlow(low, sr_len, sr_len)
+
+// 1. Khi phát hiện Đỉnh Kháng Cự Pivot mới
+if not na(sr_hi)
+    cur_res_price := sr_hi
+    if show_sr
+        line.delete(line_res)
+        label.delete(lbl_res)
+        line_res := line.new(bar_index - sr_len, cur_res_price, bar_index + 14, cur_res_price, color=#f43f5e, width=2, style=line.style_solid)
+        bool is_cur_same_res = show_hl_day and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+        string txt_res_tag = is_cur_same_res ? "👑 ĐỈNH HÔM NAY & KHÁNG CỰ: " : "KHÁNG CỰ: "
+        lbl_res  := label.new(bar_index + 14, cur_res_price, txt_res_tag + str.tostring(cur_res_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#f43f5e, style=label.style_label_left, size=size.small)
+        if is_cur_same_res
+            line.delete(line_d_hi)
+            label.delete(lbl_d_hi)
+            line_d_hi := na
+            lbl_d_hi  := na
+
+// 2. Khi phát hiện Đáy Hỗ Trợ Pivot mới
+if not na(sr_lo)
+    cur_sup_price := sr_lo
+    if show_sr
+        line.delete(line_sup)
+        label.delete(lbl_sup)
+        line_sup := line.new(bar_index - sr_len, cur_sup_price, bar_index + 14, cur_sup_price, color=#10b981, width=2, style=line.style_solid)
+        bool is_cur_same_sup = show_hl_day and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+        string txt_sup_tag = is_cur_same_sup ? "🛡️ HỖ TRỢ & ĐÁY HÔM NAY: " : "HỖ TRỢ: "
+        lbl_sup  := label.new(bar_index + 14, cur_sup_price, txt_sup_tag + str.tostring(cur_sup_price, "#.##"), color=color.new(#10b981, 100), textcolor=#10b981, style=label.style_label_left, size=size.small)
+        if is_cur_same_sup
+            line.delete(line_d_lo)
+            label.delete(lbl_d_lo)
+            line_d_lo := na
+            lbl_d_lo  := na
+
+// 3. XỬ LÝ KHI PHÁ VỠ KHÁNG CỰ (BULLISH BREAKOUT)
+if not na(cur_res_price) and close > cur_res_price
+    float broken_res = cur_res_price
+    if sr_flip
+        // S/R Flip: Kháng cự bị phá biến thành Hỗ Trợ Đỡ Giá (Support Flip)
+        cur_sup_price := broken_res
+        if show_sr
+            line.delete(line_res)
+            label.delete(lbl_res)
+            line.delete(line_sup)
+            label.delete(lbl_sup)
+            line_sup := line.new(bar_index, broken_res, bar_index + 14, broken_res, color=#00f0ff, width=2, style=line.style_dashed)
+            lbl_sup  := label.new(bar_index + 14, broken_res, "FLIP HỖ TRỢ: " + str.tostring(broken_res, "#.##"), color=color.new(#00f0ff, 100), textcolor=#00f0ff, style=label.style_label_left, size=size.small)
+    else
+        if show_sr
+            line.delete(line_res)
+            label.delete(lbl_res)
+            line_res := na
+            lbl_res  := na
+    cur_res_price := na // Giải phóng cản để mở đường cho lệnh BUY theo trend
+
+// 4. XỬ LÝ KHI THỦNG HỖ TRỢ (BEARISH BREAKDOWN)
+if not na(cur_sup_price) and close < cur_sup_price
+    float broken_sup = cur_sup_price
+    if sr_flip
+        // S/R Flip: Hỗ trợ bị thủng biến thành Kháng Cự Đè Giá (Resistance Flip)
+        cur_res_price := broken_sup
+        if show_sr
+            line.delete(line_sup)
+            label.delete(lbl_sup)
+            line.delete(line_res)
+            label.delete(lbl_res)
+            line_res := line.new(bar_index, broken_sup, bar_index + 14, broken_sup, color=#fb923c, width=2, style=line.style_dashed)
+            lbl_res  := label.new(bar_index + 14, broken_sup, "FLIP CẢN: " + str.tostring(broken_sup, "#.##"), color=color.new(#fb923c, 100), textcolor=#fb923c, style=label.style_label_left, size=size.small)
+    else
+        if show_sr
+            line.delete(line_sup)
+            label.delete(lbl_sup)
+            line_sup := na
+            lbl_sup  := na
+    cur_sup_price := na // Giải phóng hỗ trợ để mở đường cho lệnh SELL theo trend
+
+// Kéo dài các cản còn hiệu lực sang các cây nến tiếp theo & cập nhật nội dung nhãn linh hoạt
+if show_sr
+    if not na(line_res) and not na(cur_res_price)
+        line.set_x2(line_res, bar_index + 14)
+        if not na(lbl_res)
+            label.set_x(lbl_res, bar_index + 14)
+            bool is_merge_res = show_hl_day and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+            string txt_cur_res = is_merge_res ? ("👑 ĐỈNH HÔM NAY & KHÁNG CỰ: " + str.tostring(cur_res_price, "#.##")) : ("KHÁNG CỰ: " + str.tostring(cur_res_price, "#.##"))
+            label.set_text(lbl_res, txt_cur_res)
+            if is_merge_res
+                line.delete(line_d_hi)
+                label.delete(lbl_d_hi)
+                line_d_hi := na
+                lbl_d_hi  := na
+    if not na(line_sup) and not na(cur_sup_price)
+        line.set_x2(line_sup, bar_index + 14)
+        if not na(lbl_sup)
+            label.set_x(lbl_sup, bar_index + 14)
+            bool is_merge_sup = show_hl_day and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+            string txt_cur_sup = is_merge_sup ? ("🛡️ HỖ TRỢ & ĐÁY HÔM NAY: " + str.tostring(cur_sup_price, "#.##")) : ("HỖ TRỢ: " + str.tostring(cur_sup_price, "#.##"))
+            label.set_text(lbl_sup, txt_cur_sup)
+            if is_merge_sup
+                line.delete(line_d_lo)
+                label.delete(lbl_d_lo)
+                line_d_lo := na
+                lbl_d_lo  := na
+
+
+// ==============================================================================
+// 4. VOLUME PROFILE — POC (NAM CHÂM VÀNG) & VÙNG GIÁ TRỊ VAH/VAL (70%)
+// ==============================================================================
+var int[]   arr_price_int = array.new_int()
+var float[] arr_vol_bin   = array.new_float()
+
+var float cur_poc_val   = na
+var float cur_vah_val   = na
+var float cur_val_val   = na
+var float prev_poc_val  = na
+var int   cur_poc_bar   = na
+
+if is_new_day
+    if array.size(arr_vol_bin) > 0
+        int max_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
+        if max_i >= 0
+            prev_poc_val := float(array.get(arr_price_int, max_i)) * poc_step
+    array.clear(arr_price_int)
+    array.clear(arr_vol_bin)
+    cur_poc_bar := bar_index
+
+// Phân bổ volume vào các mức giá theo poc_step:
+// Đỉnh High (25%), Đáy Low (25%) và Thân Close (50%) giúp Volume Profile mịn màng chuẩn xác
+float bar_v = nz(volume, 1.0)
+int k_hi = int(math.round(high / poc_step))
+int k_lo = int(math.round(low / poc_step))
+int k_cl = int(math.round(close / poc_step))
+
+int idx_cl = array.indexof(arr_price_int, k_cl)
+if idx_cl >= 0
+    array.set(arr_vol_bin, idx_cl, array.get(arr_vol_bin, idx_cl) + (bar_v * 0.50))
+else
+    array.push(arr_price_int, k_cl)
+    array.push(arr_vol_bin, bar_v * 0.50)
+
+int idx_hi = array.indexof(arr_price_int, k_hi)
+if idx_hi >= 0
+    array.set(arr_vol_bin, idx_hi, array.get(arr_vol_bin, idx_hi) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_hi)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+int idx_lo = array.indexof(arr_price_int, k_lo)
+if idx_lo >= 0
+    array.set(arr_vol_bin, idx_lo, array.get(arr_vol_bin, idx_lo) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_lo)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+if array.size(arr_vol_bin) > 0
+    int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
+    if best_i >= 0
+        int poc_key = array.get(arr_price_int, best_i)
+        cur_poc_val := float(poc_key) * poc_step
+        
+        // Tính toán VAH & VAL (70% Volume bao quanh POC với loop_guard 350 bao trọn biên độ Vàng)
+        if show_va
+            float total_v  = array.sum(arr_vol_bin)
+            float target_v = total_v * 0.70
+            float acc_v    = array.get(arr_vol_bin, best_i)
+            int up_k       = poc_key
+            int dn_k       = poc_key
+            int loop_guard = 350
+            
+            while acc_v < target_v and loop_guard > 0
+                loop_guard := loop_guard - 1
+                int test_up = up_k + 1
+                int test_dn = dn_k - 1
+                int idx_u   = array.indexof(arr_price_int, test_up)
+                int idx_d   = array.indexof(arr_price_int, test_dn)
+                float vu    = idx_u >= 0 ? array.get(arr_vol_bin, idx_u) : 0.0
+                float vd    = idx_d >= 0 ? array.get(arr_vol_bin, idx_d) : 0.0
+                
+                if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 200 and poc_key - test_dn > 200)
+                    break
+                    
+                if vu >= vd and vu > 0.0
+                    acc_v := acc_v + vu
+                    up_k  := test_up
+                else if vd > 0.0
+                    acc_v := acc_v + vd
+                    dn_k  := test_dn
+                else
+                    up_k  := test_up
+                    dn_k  := test_dn
+                    
+            cur_vah_val := float(up_k) * poc_step
+            cur_val_val := float(dn_k) * poc_step
+
+// 1. Đường POC Hôm Nay (Nam châm vàng nét liền)
+var line  line_poc_today = na
+var label lbl_poc_today  = na
+
+if show_poc and not na(cur_poc_val)
+    line.delete(line_poc_today)
+    label.delete(lbl_poc_today)
+    int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
+    line_poc_today := line.new(start_b, cur_poc_val, bar_index + 14, cur_poc_val, color=#f59e0b, width=2, style=line.style_solid)
+    lbl_poc_today  := label.new(bar_index + 14, cur_poc_val, "🎯 POC HÔM NAY: " + str.tostring(cur_poc_val, "#.##"), color=color.new(#f59e0b, 100), textcolor=#f59e0b, style=label.style_label_left, size=size.small)
+
+if show_poc and not na(line_poc_today)
+    line.set_x2(line_poc_today, bar_index + 14)
+    label.set_x(lbl_poc_today, bar_index + 14)
+
+// 2. Đường POC Hôm Qua (Nam châm tím nét đứt)
+var line  line_poc_prev = na
+var label lbl_poc_prev  = na
+
+if show_prev_poc and not na(prev_poc_val)
+    line.delete(line_poc_prev)
+    label.delete(lbl_poc_prev)
+    int x_prev = (not na(cur_poc_val) and math.abs(prev_poc_val - cur_poc_val) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_poc_prev := line.new(bar_index - 40, prev_poc_val, x_prev, prev_poc_val, color=#c084fc, width=2, style=line.style_dashed)
+    lbl_poc_prev  := label.new(x_prev, prev_poc_val, "🧲 POC HÔM QUA: " + str.tostring(prev_poc_val, "#.##"), color=color.new(#c084fc, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+
+if show_prev_poc and not na(line_poc_prev)
+    int x_prev = (not na(cur_poc_val) and math.abs(prev_poc_val - cur_poc_val) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_poc_prev, x_prev)
+    label.set_x(lbl_poc_prev, x_prev)
+
+// 3. Đường VAH & VAL (VÙNG GIÁ TRỊ 70% KHỐI LƯỢNG & ĐỔI MÀU KHI PHÁ VỠ)
+var line  line_vah = na
+var label lbl_vah  = na
+var line  line_val = na
+var label lbl_val  = na
+var box   box_va   = na
+
+bool is_above_vah = not na(cur_vah_val) and close > cur_vah_val
+bool is_below_val = not na(cur_val_val) and close < cur_val_val
+
+// Khung hộp tô nền mờ Vùng Giá Trị 70% Volume (Value Area Zone)
+if show_va_box and show_va and not na(cur_vah_val) and not na(cur_val_val)
+    box.delete(box_va)
+    int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
+    box_va := box.new(start_b, cur_vah_val, bar_index + 21, cur_val_val, 
+                      border_color=color.new(#a855f7, 80), 
+                      border_width=1, 
+                      border_style=line.style_dotted, 
+                      bgcolor=color.new(#8b5cf6, 94))
+else
+    box.delete(box_va)
+
+// Vẽ VAH (Mép trên Vùng Giá Trị 70%)
+if show_va and not na(cur_vah_val)
+    line.delete(line_vah)
+    label.delete(lbl_vah)
+    int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
+    
+    color col_vah  = #c084fc
+    int   w_vah    = 1
+    string txt_vah = "VAH (70%): " + str.tostring(cur_vah_val, "#.##")
+    
+    // Khi giá bứt phá ra ngoài VAH: Chuyển sang Cyan sáng rực, biến thành Bệ Đỡ Hỗ Trợ
+    if is_above_vah
+        col_vah := #00f0ff
+        w_vah   := 2
+        txt_vah := "🔥 VAH: " + str.tostring(cur_vah_val, "#.##") + " [PHÁ TĂNG • BỆ ĐỠ]"
+        
+    int x_vah = (not na(cur_res_price) and math.abs(cur_vah_val - cur_res_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_vah := line.new(start_b, cur_vah_val, x_vah, cur_vah_val, color=col_vah, width=w_vah, style=line.style_dashed)
+    lbl_vah  := label.new(x_vah, cur_vah_val, txt_vah, color=color.new(col_vah, 100), textcolor=col_vah, style=label.style_label_left, size=size.small)
+
+if show_va and not na(line_vah)
+    int x_vah = (not na(cur_res_price) and math.abs(cur_vah_val - cur_res_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_vah, x_vah)
+    label.set_x(lbl_vah, x_vah)
+
+// Vẽ VAL (Mép dưới Vùng Giá Trị 70%)
+if show_va and not na(cur_val_val)
+    line.delete(line_val)
+    label.delete(lbl_val)
+    int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
+    
+    color col_val  = #c084fc
+    int   w_val    = 1
+    string txt_val = "VAL (70%): " + str.tostring(cur_val_val, "#.##")
+    
+    // Khi giá phá thủng VAL: Chuyển sang Đỏ cam cảnh báo, biến thành Trần Kháng Cự Đè Giá
+    if is_below_val
+        col_val := #f43f5e
+        w_val   := 2
+        txt_val := "⚡ VAL: " + str.tostring(cur_val_val, "#.##") + " [PHÁ GIẢM • CẢN ĐÈ]"
+        
+    int x_val = (not na(cur_sup_price) and math.abs(cur_val_val - cur_sup_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_val := line.new(start_b, cur_val_val, x_val, cur_val_val, color=col_val, width=w_val, style=line.style_dashed)
+    lbl_val  := label.new(x_val, cur_val_val, txt_val, color=color.new(col_val, 100), textcolor=col_val, style=label.style_label_left, size=size.small)
+
+if show_va and not na(line_val)
+    int x_val = (not na(cur_sup_price) and math.abs(cur_val_val - cur_sup_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_val, x_val)
+    label.set_x(lbl_val, x_val)
+
+
+// ==============================================================================
+// 5. THUẬT TOÁN KÍCH HOẠT TÍN HIỆU (KẾT HỢP TREND SONIC R & PING-PONG SIDEWAY)
+// ==============================================================================
+h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off)
+h1_ema   = request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
+mtf_h1   = h1_close > h1_ema
+
+// 1. Phân tích nến & Xung lực
+atr_val         = ta.atr(14)
+vol_ma20        = ta.sma(volume, 20)
+is_vol_surge    = na(volume) or (volume >= vol_ma20 * 1.20)
+
+candle_range    = high - low
+min_candle_size = nz(atr_val * 0.25, syminfo.mintick * 10)
+body_size       = math.abs(close - open)
+lower_wick      = math.min(open, close) - low
+upper_wick      = high - math.max(open, close)
+
+// Nến từ chối đơn lẻ (Setup Candle)
+is_pin_buy      = candle_range >= min_candle_size and lower_wick >= body_size * 1.2 and lower_wick >= candle_range * 0.4
+is_engulf_buy   = close > open and close > high[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
+
+is_pin_sell     = candle_range >= min_candle_size and upper_wick >= body_size * 1.2 and upper_wick >= candle_range * 0.4
+is_engulf_sell  = close < open and close < low[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
+
+// 2. BỘ LỌC XÁC NHẬN 2 CÂY NẾN (CHỐNG BẪY RÚT RÂU ẢO)
+// Cây 1 setup rút chân + Cây 2 xác nhận đóng cửa thuận chiều vượt 50% thân nến 1
+candle1_mid_buy   = (open[1] + close[1]) * 0.5
+candle1_mid_sell  = (open[1] + close[1]) * 0.5
+two_bar_conf_buy  = (is_pin_buy[1] or low[1] <= ema_low[1]) and (close > open) and (close >= candle1_mid_buy)
+two_bar_conf_sell = (is_pin_sell[1] or high[1] >= ema_high[1]) and (close < open) and (close <= candle1_mid_sell)
+
+has_rejection_buy  = require_2bar ? (is_engulf_buy or two_bar_conf_buy) : (is_pin_buy or is_engulf_buy)
+has_rejection_sell = require_2bar ? (is_engulf_sell or two_bar_conf_sell) : (is_pin_sell or is_engulf_sell)
+
+cross_up_ema = ta.crossover(close, ema_close)
+cross_dn_ema = ta.crossunder(close, ema_close)
+
+float active_res = not na(cur_res_price) ? cur_res_price : (not na(day_high_price) and day_high_price > close ? day_high_price : na)
+float active_sup = not na(cur_sup_price) ? cur_sup_price : (not na(day_low_price) and day_low_price < close ? day_low_price : na)
+
+dist_res = not na(active_res) ? math.max(0.0, active_res - close) : na
+dist_sup = not na(active_sup) ? math.max(0.0, close - active_sup) : na
+has_room_buy  = na(dist_res) or (dist_res >= sl_fixed_pts * 1.1)
+has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
+
+// 3. BỘ LỌC LÁ CHẮN KHUNG GIỜ VÀNG (KILLZONES SHIELD)
+// Phiên Âu (London: 14:00 - 18:00 VN = 07:00 - 11:00 UTC)
+// Phiên Mỹ (New York: 19:30 - 23:00 VN = 12:30 - 16:00 UTC)
+in_london_kz  = not na(time(timeframe.period, "0700-1100:1234567", "UTC"))
+in_newyork_kz = not na(time(timeframe.period, "1230-1600:1234567", "UTC"))
+is_golden_kz  = in_london_kz or in_newyork_kz
+
+// Giờ giãn spread đêm muộn & rạng sáng
+is_spread     = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
+time_allowed  = not is_spread and (not filter_kz or is_golden_kz)
+
+// Độ dốc EMA 89 & Trạng thái Dải Rồng nhận diện Sideway vs Trend (CHỐNG BẪY BẮT ĐÁY)
+dragon_bearish  = (ema_high < ema_89) and (ema_close < ema_close[2])
+dragon_bullish  = (ema_low > ema_89) and (ema_close > ema_close[2])
+dragon_in_ema89 = (ema_high >= ema_89) and (ema_low <= ema_89)
+
+ema89_slope = math.abs(ema_89 - nz(ema_89[8], ema_89)) / (8.0 * nz(atr_val, 1.0))
+// Chỉ được xem là Sideway khi dải Rồng lồng vào EMA 89 hoặc EMA 89 phẳng, và TUYỆT ĐỐI không trong nhịp rơi/tăng dốc
+is_sideway  = (ema89_slope < 0.085 or dragon_in_ema89) and not dragon_bearish and not dragon_bullish
+
+// 1. Tín hiệu theo Xu Hướng (Sonic R Chuẩn)
+trend_buy_trigger  = not is_sideway and (close > ema_89) and mtf_h1 and cross_up_ema and (low <= ema_high) and has_rejection_buy and time_allowed and has_room_buy
+trend_sell_trigger = not is_sideway and (close < ema_89) and not mtf_h1 and cross_dn_ema and (high >= ema_low) and has_rejection_sell and time_allowed and has_room_sell
+
+// 2. Tín hiệu Ping-Pong khi Sideway (Đánh 2 đầu Cản/VAH/VAL về POC - CẤM NGẶT BẮT ĐÁY KHI RỒNG ĐANG DỐC XUỐNG)
+near_res = (not na(cur_res_price) and high >= cur_res_price - 2.5 and close <= cur_res_price) or (not na(cur_vah_val) and high >= cur_vah_val - 1.5 and close <= cur_vah_val and not is_above_vah)
+near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cur_sup_price) or (not na(cur_val_val) and low <= cur_val_val + 1.5 and close >= cur_val_val and not is_below_val)
+
+safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and time_allowed and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
+safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and time_allowed and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
+
+buy_trigger  = trend_buy_trigger or safe_ping_buy
+sell_trigger = trend_sell_trigger or safe_ping_sell
+
+// 4. PHÂN HẠNG TÍN HIỆU THÀNH KÈO A+ VÀ B
+bool is_buy_grade_a  = trend_buy_trigger and mtf_h1 and dragon_bullish and is_vol_surge and has_room_buy
+bool is_sell_grade_a = trend_sell_trigger and not mtf_h1 and dragon_bearish and is_vol_surge and has_room_sell
+
+var int last_side = 0
+var int last_bar  = 0
+valid_buy  = buy_trigger and (last_side != 1 or bar_index - last_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
+valid_sell = sell_trigger and (last_side != -1 or bar_index - last_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
+
+var label lbl_sig_pos    = na
+var line  line_be_draw   = na
+var line  line_tp1_draw  = na
+var line  line_sl_draw   = na
+
+if (valid_buy or valid_sell) and show_signals
+    last_bar  := bar_index
+    entry_val = close
+    last_side := valid_buy ? 1 : -1
+    bool is_ping_mode = valid_buy ? safe_ping_buy : safe_ping_sell
+    bool is_grade_a   = valid_buy ? is_buy_grade_a : is_sell_grade_a
+    
+    float sl_val  = na
+    float tp_val  = na
+    string tp_tag = ""
+    
+    if valid_buy
+        // SL thông minh: sau Hỗ trợ nếu có
+        if not na(cur_sup_price) and cur_sup_price < entry_val and (entry_val - cur_sup_price <= sl_fixed_pts * 1.5)
+            sl_val := cur_sup_price - 1.5
+        else
+            sl_val := entry_val - sl_fixed_pts
+            
+        // TP thông minh: hướng về POC hoặc Kháng cự / Đỉnh Ngày
+        if tp_mode == "🎯 Tự Động Theo POC & Cản"
+            if not na(cur_poc_val) and cur_poc_val > entry_val + 2.5
+                tp_val := cur_poc_val
+                tp_tag := "(POC)"
+            else if not na(cur_res_price) and cur_res_price > entry_val + 3.0
+                tp_val := cur_res_price - 0.5
+                tp_tag := "(Kháng Cự)"
+            else if not na(day_high_price) and day_high_price > entry_val + 3.0
+                tp_val := day_high_price - 0.5
+                tp_tag := "(Đỉnh Ngày)"
+            else
+                tp_val := entry_val + (math.abs(entry_val - sl_val) * rr_ratio)
+                tp_tag := "(R:R)"
+        else
+            tp_val := entry_val + (sl_fixed_pts * rr_ratio)
+            tp_tag := "(R:R)"
+            
+    else // valid_sell
+        // SL thông minh: sau Kháng cự nếu có
+        if not na(cur_res_price) and cur_res_price > entry_val and (cur_res_price - entry_val <= sl_fixed_pts * 1.5)
+            sl_val := cur_res_price + 1.5
+        else
+            sl_val := entry_val + sl_fixed_pts
+            
+        // TP thông minh: hướng về POC hoặc Hỗ trợ / Đáy Ngày
+        if tp_mode == "🎯 Tự Động Theo POC & Cản"
+            if not na(cur_poc_val) and cur_poc_val < entry_val - 2.5
+                tp_val := cur_poc_val
+                tp_tag := "(POC)"
+            else if not na(cur_sup_price) and cur_sup_price < entry_val - 3.0
+                tp_val := cur_sup_price + 0.5
+                tp_tag := "(Hỗ Trợ)"
+            else if not na(day_low_price) and day_low_price < entry_val - 3.0
+                tp_val := day_low_price + 0.5
+                tp_tag := "(Đáy Ngày)"
+            else
+                tp_val := entry_val - (math.abs(sl_val - entry_val) * rr_ratio)
+                tp_tag := "(R:R)"
+        else
+            tp_val := entry_val - (sl_fixed_pts * rr_ratio)
+            tp_tag := "(R:R)"
+            
+    // 5. TÍNH MỐC BE KHÓA HÒA VỐN (+1.5R) VÀ VẼ ĐƯỜNG TRỰC QUAN
+    float sl_distance = math.abs(entry_val - sl_val)
+    float be_target   = valid_buy ? (entry_val + sl_distance * 1.5) : (entry_val - sl_distance * 1.5)
+    
+    if show_be_line
+        line.delete(line_sl_draw)
+        line.delete(line_be_draw)
+        line.delete(line_tp1_draw)
+        line_sl_draw  := line.new(bar_index, sl_val, bar_index + 16, sl_val, color=color.new(#f43f5e, 20), width=1, style=line.style_dashed)
+        line_be_draw  := line.new(bar_index, be_target, bar_index + 16, be_target, color=color.new(#38bdf8, 20), width=1, style=line.style_dotted)
+        line_tp1_draw := line.new(bar_index, tp_val, bar_index + 16, tp_val, color=color.new(#10b981, 20), width=1, style=line.style_dashed)
+        
+    label.delete(lbl_sig_pos)
+    
+    // Khoảng cách offset cao hơn để không bị nến đè nhãn
+    float offset_y = math.max(nz(atr_val, 2.0) * 0.75, 2.0)
+    
+    // Tên phân hạng
+    string grade_name = is_grade_a ? "A+ [CHẤT LƯỢNG CAO]" : "B [HẠ 50% LOT - CHỐT NHANH]"
+    string action_str = valid_buy ? "▲ BUY " : "▼ SELL "
+    
+    string trade_reason = ""
+    string tip_details  = ""
+    
+    if is_ping_mode
+        if valid_buy
+            trade_reason := "Chạm Hỗ Trợ/VAL • Nến 2 cây xác nhận (Về POC)"
+            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
+        else
+            trade_reason := "Chạm Kháng Cự/VAH • Nến 2 cây xác nhận (Về POC)"
+            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
+    else
+        if valid_buy
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Trên EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+        else
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            
+    // Định dạng nội dung nhãn
+    string label_content = ""
+    color  lbl_bg        = na
+    color  lbl_text      = color.white
+    
+    if lbl_theme == "⚡ Tối Giản (1 Dòng)"
+        label_content := action_str + "[" + (is_grade_a ? "A+" : "B") + "] " + str.tostring(entry_val, "#.#") + " | TP1: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#")
+        lbl_bg   := valid_buy ? (is_grade_a ? color.new(#065f46, 10) : color.new(#0f172a, 10)) : (is_grade_a ? color.new(#9f1239, 10) : color.new(#0f172a, 10))
+        lbl_text := valid_buy ? #34d399 : #fb7185
+        
+    else if lbl_theme == "🔥 Cổ Điển"
+        label_content := action_str + " @ " + str.tostring(entry_val, "#.#") + "\nTP: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#") + "\n" + grade_name
+        lbl_bg   := valid_buy ? #059669 : #e11d48
+        lbl_text := color.white
+        
+    else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định
+        label_content := action_str + grade_name + " @ " + str.tostring(entry_val, "#.#") + 
+                         "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag + 
+                         "\n• Mốc BE (Dời hòa vốn): " + str.tostring(be_target, "#.#") + " (+1.5R)" + 
+                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + 
+                         "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Đi 50% Volume")
+        lbl_bg   := is_grade_a ? (valid_buy ? color.new(#064e3b, 10) : color.new(#881337, 10)) : color.new(#0f172a, 10)
+        lbl_text := valid_buy ? (is_grade_a ? #4ade80 : #38bdf8) : (is_grade_a ? #f87171 : #fb7185)
+        
+    if valid_buy
+        lbl_sig_pos := label.new(bar_index, low - offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_up, size=size.small, tooltip=tip_details)
+    else
+        lbl_sig_pos := label.new(bar_index, high + offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_down, size=size.small, tooltip=tip_details)
+
+    // Bắn thông báo tự động (Alert)
+    string alert_msg = "🔥 [TNDUCK PRO] " + action_str + grade_name + " - " + syminfo.ticker + 
+                       "\n• Giá vào: " + str.tostring(entry_val, "#.#") + 
+                       "\n• TP1: " + str.tostring(tp_val, "#.#") + 
+                       "\n• Mốc BE (+1.5R): " + str.tostring(be_target, "#.#") + 
+                       "\n• SL: " + str.tostring(sl_val, "#.#") + 
+                       "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume")
+    alert(alert_msg, alert.freq_once_per_bar_close)
+
+alertcondition(valid_buy, title="🟢 Báo Tín Hiệu MUA (BUY)", message="🟢 TNDUCK System: TÍN HIỆU MUA {{ticker}} tại giá {{close}}")
+alertcondition(valid_sell, title="🔴 Báo Tín Hiệu BÁN (SELL)", message="🔴 TNDUCK System: TÍN HIỆU BÁN {{ticker}} tại giá {{close}}")

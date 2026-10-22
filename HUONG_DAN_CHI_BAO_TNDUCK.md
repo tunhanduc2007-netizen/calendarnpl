@@ -65,4 +65,19 @@ Nhìn vào **Dải Rồng Sonic R (EMA 34)** và **Đường Xu Hướng Vàng (
 1. [ ] Dải Rồng và EMA 89 đang chỉ hướng nào? (Có bị đánh ngược Dải Rồng không?)
 2. [ ] Có nến xác nhận đóng cửa rõ ràng chưa? (Tuyệt đối không vào lệnh khi nến chưa đóng!)
 3. [ ] Đã tính trước mức Cắt Lỗ (SL) chưa? (Rủi ro tối đa 1–2% tài khoản cho mỗi lệnh).
-4. [ ] Nếu giá chạy được +1.5R (2.5 – 3 giá), đã nhớ kế hoạch **CHỐT 50% VÀ DỜI SL VỀ ENTRY** chưa?
+4. [ ] Nếu giá chạy được TP1 (đạt tối thiểu R:R 1.5), đã nhớ kế hoạch **CHỐT 50% VÀ DỜI SL VỀ ENTRY (HÒA VỐN BE)** chưa?
+
+---
+
+## 📊 5. CÁCH CHẠY BẢN TỰ ĐỘNG THỐNG KÊ (STRATEGY TESTER) TRÊN TRADINGVIEW
+
+1. Mở TradingView, mở mục **Pine Editor** ở thanh công cụ dưới đáy màn hình.
+2. Mở file [Sonic_R_Gold_Strategy.pine](file:///Users/mac/trading/Sonic_R_Gold_Strategy.pine), sao chép toàn bộ code và dán vào Pine Editor.
+3. Bấm **"Lưu"** (Save) và bấm **"Thêm vào biểu đồ"** (Add to chart).
+4. Mở tab **"Trình kiểm định chiến lược"** (Strategy Tester) ngay bên cạnh Pine Editor để xem báo cáo:
+   * **Lợi nhuận ròng (Net Profit):** Số tiền kiếm được qua các giai đoạn thị trường.
+   * **Tỷ lệ thắng (Win Rate %):** Tỷ lệ lệnh thắng thực tế.
+   * **Hệ số lợi nhuận (Profit Factor):** Tỷ số Tổng Lãi / Tổng Lỗ (Chuẩn quỹ > 1.5).
+   * **Mức sụt giảm tối đa (Max Drawdown):** Rủi ro sụt giảm vốn sâu nhất.
+   * **Danh sách giao dịch (List of Trades):** Ghi chép chi tiết từng lệnh vào, ra, chốt TP1 và dời BE.
+5. Khung thời gian khuyên dùng để test 3 - 6 tháng: **M15** (đủ dữ liệu nến trên mọi gói tài khoản).

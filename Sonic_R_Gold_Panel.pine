@@ -23,6 +23,7 @@ grp_sltp    = "=== 4. QUẢN TRỊ RỦI RO & PHƯƠNG THỨC TP ==="
 tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sltp, display=display.none)
 allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sltp, display=display.none)
 sl_fixed_pts= input.float(4.0, "SL Cố định (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sltp, display=display.none)
+min_rr_ratio= input.float(1.5, "Tỷ lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sltp, display=display.none)
 rr_ratio    = input.float(2.0, "Tỷ lệ Risk:Reward (TP/SL)", minval=1.0, step=0.5, group=grp_sltp, display=display.none)
 acc_balance = input.float(100.0, "Số dư tài khoản ($)", minval=10.0, step=10.0, group=grp_sltp, display=display.none)
 risk_pct    = input.float(5.0, "Rủi ro mỗi lệnh (%)", minval=0.1, maxval=20.0, step=0.5, group=grp_sltp, display=display.none)
@@ -218,13 +219,13 @@ else
     array.push(arr_price_int, k_lo)
     array.push(arr_vol_bin, bar_v * 0.25)
 
-if array.size(arr_vol_bin) > 0
+if array.size(arr_vol_bin) > 0 and (barstate.isconfirmed or barstate.islast)
     int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
     if best_i >= 0
         int poc_key = array.get(arr_price_int, best_i)
         cur_poc_val := float(poc_key) * 0.5
         
-        // VAH & VAL 70% với loop_guard 350
+        // VAH & VAL 70% với loop_guard 350 (Chỉ chạy trên nến đóng để chống đơ máy)
         float total_v  = array.sum(arr_vol_bin)
         float target_v = total_v * 0.70
         float acc_v    = array.get(arr_vol_bin, best_i)
@@ -308,17 +309,20 @@ if valid_buy and pos_side == 0
     else
         pos_sl := close - sl_fixed_pts
         
+    float sl_dist = math.abs(close - pos_sl)
+    float min_tp_dist = sl_dist * min_rr_ratio
+        
     if tp_mode == "🎯 Tự Động Theo POC & Cản"
-        if not na(cur_poc_val) and cur_poc_val > close + 2.5
+        if not na(cur_poc_val) and cur_poc_val >= close + min_tp_dist
             pos_tp := cur_poc_val
-        else if not na(cur_res_price) and cur_res_price > close + 3.0
+        else if not na(cur_res_price) and cur_res_price - 0.5 >= close + min_tp_dist
             pos_tp := cur_res_price - 0.5
-        else if not na(day_high_price) and day_high_price > close + 3.0
+        else if not na(day_high_price) and day_high_price - 0.5 >= close + min_tp_dist
             pos_tp := day_high_price - 0.5
         else
-            pos_tp := close + (math.abs(close - pos_sl) * rr_ratio)
+            pos_tp := close + (sl_dist * math.max(rr_ratio, min_rr_ratio))
     else
-        pos_tp := close + (sl_fixed_pts * rr_ratio)
+        pos_tp := close + (sl_dist * rr_ratio)
 
 else if valid_sell and pos_side == 0
     pos_side      := -1
@@ -335,17 +339,20 @@ else if valid_sell and pos_side == 0
     else
         pos_sl := close + sl_fixed_pts
         
+    float sl_dist = math.abs(pos_sl - close)
+    float min_tp_dist = sl_dist * min_rr_ratio
+        
     if tp_mode == "🎯 Tự Động Theo POC & Cản"
-        if not na(cur_poc_val) and cur_poc_val < close - 2.5
+        if not na(cur_poc_val) and cur_poc_val <= close - min_tp_dist
             pos_tp := cur_poc_val
-        else if not na(cur_sup_price) and cur_sup_price < close - 3.0
+        else if not na(cur_sup_price) and cur_sup_price + 0.5 <= close - min_tp_dist
             pos_tp := cur_sup_price + 0.5
-        else if not na(day_low_price) and day_low_price < close - 3.0
+        else if not na(day_low_price) and day_low_price + 0.5 <= close - min_tp_dist
             pos_tp := day_low_price + 0.5
         else
-            pos_tp := close - (math.abs(pos_sl - close) * rr_ratio)
+            pos_tp := close - (sl_dist * math.max(rr_ratio, min_rr_ratio))
     else
-        pos_tp := close - (sl_fixed_pts * rr_ratio)
+        pos_tp := close - (sl_dist * rr_ratio)
 
 // Cập nhật kết quả lệnh: CHỈ KIỂM TRA TRÊN NẾN SAU KHI VÀO LỆNH (bar_index > pos_bar)
 // Tránh lỗi lấy đỉnh/đáy của chính cây nến vào lệnh làm dính SL oan

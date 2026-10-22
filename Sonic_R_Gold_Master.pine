@@ -31,9 +31,19 @@ allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", gr
 require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến (Chống Rút Râu Ảo)", group=grp_sig, display=display.none)
 grade_filter= input.bool(true, "Phân Hạng Kèo A+ / B (Cảnh Báo Giảm Lot)", group=grp_sig, display=display.none)
 filter_kz   = input.bool(true, "Bật Lá Chắn Khung Giờ Vàng (Phiên Âu 14h-18h & Mỹ 19h30-23h)", group=grp_sig, display=display.none)
-show_be_line= input.bool(true, "Vẽ Mốc BE Khóa Hòa Vốn (+1.5R) & Đường TP/SL", group=grp_sig, display=display.none)
+show_be_line= input.bool(true, "Vẽ Mốc Khóa Hòa Vốn (BE @ Entry) & Đường TP/SL", group=grp_sig, display=display.none)
 sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Tối Đa (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
+min_rr_ratio= input.float(1.5, "Tỷ lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig, display=display.none)
 rr_ratio    = input.float(2.0, "Tỷ lệ Ăn Lời R:R (Nếu chọn R:R cố định)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
+
+// Cảnh báo nếu mở trên khung thời gian không phù hợp (Chỉ báo tối ưu cho M1 - M15)
+bool is_htf_invalid = (timeframe.isintraday and timeframe.multiplier >= 60) or timeframe.isdaily or timeframe.isweekly
+var table tbl_warn = table.new(position.top_center, 1, 1)
+if barstate.islast
+    if is_htf_invalid
+        table.cell(tbl_warn, 0, 0, "⚠️ CẢNH BÁO: Chỉ báo tnduck được thiết kế tối ưu cho Scalping M1 - M15!\nTrên khung H1/H4/Daily, bộ lọc phiên và MTF H1 sẽ tự tắt.", bgcolor=color.new(#dc2626, 15), text_color=color.white, text_size=size.small)
+    else
+        table.clear(tbl_warn, 0, 0)
 
 
 // ==============================================================================
@@ -309,7 +319,8 @@ if array.size(arr_vol_bin) > 0
         cur_poc_val := float(poc_key) * poc_step
         
         // Tính toán VAH & VAL (70% Volume bao quanh POC với loop_guard 350 bao trọn biên độ Vàng)
-        if show_va
+        // CHỈ tính toán khi nến đóng hoặc nến cuối cùng để loại bỏ hoàn toàn nguy cơ chậm lag loop!
+        if show_va and (barstate.isconfirmed or barstate.islast)
             float total_v  = array.sum(arr_vol_bin)
             float target_v = total_v * 0.70
             float acc_v    = array.get(arr_vol_bin, best_i)
@@ -558,23 +569,26 @@ if (valid_buy or valid_sell) and show_signals
         else
             sl_val := entry_val - sl_fixed_pts
             
-        // TP thông minh: hướng về POC hoặc Kháng cự / Đỉnh Ngày
+        float sl_dist = math.abs(entry_val - sl_val)
+        float min_tp_dist = sl_dist * min_rr_ratio
+
+        // TP thông minh: hướng về POC hoặc Kháng cự / Đỉnh Ngày, bắt buộc đạt R:R tối thiểu >= min_rr_ratio (1.5)
         if tp_mode == "🎯 Tự Động Theo POC & Cản"
-            if not na(cur_poc_val) and cur_poc_val > entry_val + 2.5
+            if not na(cur_poc_val) and cur_poc_val >= entry_val + min_tp_dist
                 tp_val := cur_poc_val
-                tp_tag := "(POC)"
-            else if not na(cur_res_price) and cur_res_price > entry_val + 3.0
+                tp_tag := "(POC • R:R " + str.tostring((tp_val - entry_val)/sl_dist, "#.#") + ")"
+            else if not na(cur_res_price) and cur_res_price - 0.5 >= entry_val + min_tp_dist
                 tp_val := cur_res_price - 0.5
-                tp_tag := "(Kháng Cự)"
-            else if not na(day_high_price) and day_high_price > entry_val + 3.0
+                tp_tag := "(Kháng Cự • R:R " + str.tostring((tp_val - entry_val)/sl_dist, "#.#") + ")"
+            else if not na(day_high_price) and day_high_price - 0.5 >= entry_val + min_tp_dist
                 tp_val := day_high_price - 0.5
-                tp_tag := "(Đỉnh Ngày)"
+                tp_tag := "(Đỉnh Ngày • R:R " + str.tostring((tp_val - entry_val)/sl_dist, "#.#") + ")"
             else
-                tp_val := entry_val + (math.abs(entry_val - sl_val) * rr_ratio)
-                tp_tag := "(R:R)"
+                tp_val := entry_val + (sl_dist * math.max(rr_ratio, min_rr_ratio))
+                tp_tag := "(R:R " + str.tostring(math.max(rr_ratio, min_rr_ratio), "#.#") + ")"
         else
-            tp_val := entry_val + (sl_fixed_pts * rr_ratio)
-            tp_tag := "(R:R)"
+            tp_val := entry_val + (sl_dist * rr_ratio)
+            tp_tag := "(R:R " + str.tostring(rr_ratio, "#.#") + ")"
             
     else // valid_sell
         // SL thông minh: sau Kháng cự nếu có
@@ -583,27 +597,29 @@ if (valid_buy or valid_sell) and show_signals
         else
             sl_val := entry_val + sl_fixed_pts
             
-        // TP thông minh: hướng về POC hoặc Hỗ trợ / Đáy Ngày
+        float sl_dist = math.abs(sl_val - entry_val)
+        float min_tp_dist = sl_dist * min_rr_ratio
+
+        // TP thông minh: hướng về POC hoặc Hỗ trợ / Đáy Ngày, bắt buộc đạt R:R tối thiểu >= min_rr_ratio (1.5)
         if tp_mode == "🎯 Tự Động Theo POC & Cản"
-            if not na(cur_poc_val) and cur_poc_val < entry_val - 2.5
+            if not na(cur_poc_val) and cur_poc_val <= entry_val - min_tp_dist
                 tp_val := cur_poc_val
-                tp_tag := "(POC)"
-            else if not na(cur_sup_price) and cur_sup_price < entry_val - 3.0
+                tp_tag := "(POC • R:R " + str.tostring((entry_val - tp_val)/sl_dist, "#.#") + ")"
+            else if not na(cur_sup_price) and cur_sup_price + 0.5 <= entry_val - min_tp_dist
                 tp_val := cur_sup_price + 0.5
-                tp_tag := "(Hỗ Trợ)"
-            else if not na(day_low_price) and day_low_price < entry_val - 3.0
+                tp_tag := "(Hỗ Trợ • R:R " + str.tostring((entry_val - tp_val)/sl_dist, "#.#") + ")"
+            else if not na(day_low_price) and day_low_price + 0.5 <= entry_val - min_tp_dist
                 tp_val := day_low_price + 0.5
-                tp_tag := "(Đáy Ngày)"
+                tp_tag := "(Đáy Ngày • R:R " + str.tostring((entry_val - tp_val)/sl_dist, "#.#") + ")"
             else
-                tp_val := entry_val - (math.abs(sl_val - entry_val) * rr_ratio)
-                tp_tag := "(R:R)"
+                tp_val := entry_val - (sl_dist * math.max(rr_ratio, min_rr_ratio))
+                tp_tag := "(R:R " + str.tostring(math.max(rr_ratio, min_rr_ratio), "#.#") + ")"
         else
-            tp_val := entry_val - (sl_fixed_pts * rr_ratio)
-            tp_tag := "(R:R)"
+            tp_val := entry_val - (sl_dist * rr_ratio)
+            tp_tag := "(R:R " + str.tostring(rr_ratio, "#.#") + ")"
             
-    // 5. TÍNH MỐC BE KHÓA HÒA VỐN (+1.5R) VÀ VẼ ĐƯỜNG TRỰC QUAN
-    float sl_distance = math.abs(entry_val - sl_val)
-    float be_target   = valid_buy ? (entry_val + sl_distance * 1.5) : (entry_val - sl_distance * 1.5)
+    // 5. MỐC BE KHÓA HÒA VỐN (KÉO SL VỀ ENTRY KHI ĐẠT TP1)
+    float be_target = entry_val
     
     if show_be_line
         line.delete(line_sl_draw)
@@ -628,17 +644,17 @@ if (valid_buy or valid_sell) and show_signals
     if is_ping_mode
         if valid_buy
             trade_reason := "Chạm Hỗ Trợ/VAL • Nến 2 cây xác nhận (Về POC)"
-            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
+            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
         else
             trade_reason := "Chạm Kháng Cự/VAH • Nến 2 cây xác nhận (Về POC)"
-            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
+            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
     else
         if valid_buy
             trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Trên EMA 89 • Sóng Rồng Sonic • Thuận H1"
-            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
         else
             trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
-            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
             
     // Định dạng nội dung nhãn
     string label_content = ""
@@ -651,15 +667,15 @@ if (valid_buy or valid_sell) and show_signals
         lbl_text := valid_buy ? #34d399 : #fb7185
         
     else if lbl_theme == "🔥 Cổ Điển"
-        label_content := action_str + " @ " + str.tostring(entry_val, "#.#") + "\nTP: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#") + "\n" + grade_name
+        label_content := action_str + " @ " + str.tostring(entry_val, "#.#") + "\nTP1: " + str.tostring(tp_val, "#.#") + " | BE @ " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#") + "\n" + grade_name
         lbl_bg   := valid_buy ? #059669 : #e11d48
         lbl_text := color.white
         
     else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định
         label_content := action_str + grade_name + " @ " + str.tostring(entry_val, "#.#") + 
                          "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag + 
-                         "\n• Mốc BE (Dời hòa vốn): " + str.tostring(be_target, "#.#") + " (+1.5R)" + 
-                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + 
+                         "\n• Dời Hòa Vốn (BE): Kéo SL về " + str.tostring(be_target, "#.#") + " khi chạm TP1" + 
+                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + " (Rủi ro: " + str.tostring(sl_dist, "#.#") + " giá)" + 
                          "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Đi 50% Volume")
         lbl_bg   := is_grade_a ? (valid_buy ? color.new(#064e3b, 10) : color.new(#881337, 10)) : color.new(#0f172a, 10)
         lbl_text := valid_buy ? (is_grade_a ? #4ade80 : #38bdf8) : (is_grade_a ? #f87171 : #fb7185)

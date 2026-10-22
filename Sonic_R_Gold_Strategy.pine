@@ -1,0 +1,341 @@
+//@version=6
+strategy("Chiến Lược tnduck [Sonic R & Volume Profile]", shorttitle="tnduck Strategy Tester", overlay=true, initial_capital=100, default_qty_type=strategy.fixed, default_qty_value=1, commission_type=strategy.commission.cash_per_contract, commission_value=0.07, slippage=2, max_labels_count=500, max_lines_count=500, max_boxes_count=500, process_orders_on_close=true)
+
+// ==============================================================================
+// 1. THỜI GIAN BACKTEST & CÀI ĐẶT THÔNG SỐ
+// ==============================================================================
+grp_bt      = "=== 1. KHOẢNG THỜI GIAN BACKTEST (3 - 6 THÁNG) ==="
+use_date    = input.bool(true, "Bật lọc theo khoảng ngày", group=grp_bt)
+start_date  = input.time(timestamp("2024-01-01 00:00 +0000"), "Từ Ngày", group=grp_bt)
+end_date    = input.time(timestamp("2026-12-31 23:59 +0000"), "Đến Ngày", group=grp_bt)
+in_date     = not use_date or (time >= start_date and time <= end_date)
+
+grp_sonic   = "=== 2. DẢI RỒNG SONIC R & XU HƯỚNG ==="
+len_dragon  = input.int(34, "Dragon Length (EMA 34)", minval=1, group=grp_sonic)
+len_trend   = input.int(89, "Trend Length (EMA 89 Gold)", minval=1, group=grp_sonic)
+
+grp_sr      = "=== 3. CẢN HỖ TRỢ & KHÁNG CỰ PIVOT & S/R FLIP ==="
+sr_len      = input.int(4, "Độ nhạy Cản Pivot (Chuẩn Swing SMC)", minval=2, maxval=10, group=grp_sr)
+sr_flip     = input.bool(true, "Cơ Chế S/R Flip (Đổi Cản Khi Bị Phá)", group=grp_sr)
+
+grp_vp      = "=== 4. VOLUME PROFILE & VÙNG GIÁ TRỊ ==="
+show_poc    = input.bool(true, "Vẽ Đường POC Hôm Nay", group=grp_vp)
+poc_step    = input.float(0.5, "Bước chia giá POC ($)", options=[0.25, 0.5, 1.0], group=grp_vp)
+
+grp_sig     = "=== 5. QUẢN TRỊ RỦI RO & PHƯƠNG THỨC TP/SL ==="
+tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig)
+allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig)
+require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến", group=grp_sig)
+filter_kz   = input.bool(true, "Lá Chắn Phiên Âu (14h-18h) & Mỹ (19h30-23h)", group=grp_sig)
+sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Cơ Bản (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig)
+min_rr_ratio= input.float(1.5, "Tỷ Lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig)
+rr_ratio    = input.float(2.0, "Tỷ Lệ Ăn Lời R:R Chuẩn", minval=1.0, step=0.5, group=grp_sig)
+contract_sz = input.float(100.0, "Kích Thước Hợp Đồng Sàn (1 Lot = 100 Oz)", group=grp_sig)
+
+
+// ==============================================================================
+// 2. DẢI RỒNG SONIC R & EMA 89
+// ==============================================================================
+ema_high   = ta.ema(high, len_dragon)
+ema_close  = ta.ema(close, len_dragon)
+ema_low    = ta.ema(low, len_dragon)
+ema_89     = ta.ema(close, len_trend)
+
+p_high  = plot(ema_high, "Dragon High", color=color.new(#00f0ff, 50), linewidth=1)
+p_close = plot(ema_close, "Dragon Wave", color=color.new(#38bdf8, 20), linewidth=2)
+p_low   = plot(ema_low, "Dragon Low", color=color.new(#00f0ff, 50), linewidth=1)
+fill(p_high, p_low, color=color.new(#0284c7, 92), title="Dragon Fill")
+
+bool ema89_falling = ta.falling(ema_89, 2)
+bool ema89_rising  = ta.rising(ema_89, 2)
+color col_ema89    = ema89_falling ? #f43f5e : (ema89_rising ? #10b981 : #fbbf24)
+plot(ema_89, "EMA 89", color=col_ema89, linewidth=3)
+
+
+// ==============================================================================
+// 3. CẢN HỖ TRỢ / KHÁNG CỰ & ĐỈNH ĐÁY PHIÊN
+// ==============================================================================
+bool is_new_day = timeframe.change("D")
+var float day_high_price = na
+var float day_low_price  = na
+
+if is_new_day
+    day_high_price := high
+    day_low_price  := low
+else
+    day_high_price := math.max(nz(day_high_price, high), high)
+    day_low_price  := math.min(nz(day_low_price, low), low)
+
+sr_hi = ta.pivothigh(high, sr_len, sr_len)
+sr_lo = ta.pivotlow(low, sr_len, sr_len)
+var float cur_res_price = na
+var float cur_sup_price = na
+
+if not na(sr_hi)
+    cur_res_price := sr_hi
+if not na(sr_lo)
+    cur_sup_price := sr_lo
+
+if not na(cur_res_price) and close > cur_res_price
+    if sr_flip
+        cur_sup_price := cur_res_price
+    cur_res_price := na
+
+if not na(cur_sup_price) and close < cur_sup_price
+    if sr_flip
+        cur_res_price := cur_sup_price
+    cur_sup_price := na
+
+
+// ==============================================================================
+// 4. VOLUME PROFILE & POC NGÀY (TỐI ƯU VÒNG LẶP KHÔNG LAG MÁY)
+// ==============================================================================
+var int[]   arr_price_int = array.new_int()
+var float[] arr_vol_bin   = array.new_float()
+var float   cur_poc_val   = na
+var float   cur_vah_val   = na
+var float   cur_val_val   = na
+
+if is_new_day
+    array.clear(arr_price_int)
+    array.clear(arr_vol_bin)
+
+float bar_v = nz(volume, 1.0)
+int k_hi = int(math.round(high / poc_step))
+int k_lo = int(math.round(low / poc_step))
+int k_cl = int(math.round(close / poc_step))
+
+int idx_cl = array.indexof(arr_price_int, k_cl)
+if idx_cl >= 0
+    array.set(arr_vol_bin, idx_cl, array.get(arr_vol_bin, idx_cl) + (bar_v * 0.50))
+else
+    array.push(arr_price_int, k_cl)
+    array.push(arr_vol_bin, bar_v * 0.50)
+
+int idx_hi = array.indexof(arr_price_int, k_hi)
+if idx_hi >= 0
+    array.set(arr_vol_bin, idx_hi, array.get(arr_vol_bin, idx_hi) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_hi)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+int idx_lo = array.indexof(arr_price_int, k_lo)
+if idx_lo >= 0
+    array.set(arr_vol_bin, idx_lo, array.get(arr_vol_bin, idx_lo) + (bar_v * 0.25))
+else
+    array.push(arr_price_int, k_lo)
+    array.push(arr_vol_bin, bar_v * 0.25)
+
+if array.size(arr_vol_bin) > 0 and (barstate.isconfirmed or barstate.islast)
+    int best_i = array.indexof(arr_vol_bin, array.max(arr_vol_bin))
+    if best_i >= 0
+        int poc_key = array.get(arr_price_int, best_i)
+        cur_poc_val := float(poc_key) * poc_step
+        
+        float total_v  = array.sum(arr_vol_bin)
+        float target_v = total_v * 0.70
+        float acc_v    = array.get(arr_vol_bin, best_i)
+        int up_k       = poc_key
+        int dn_k       = poc_key
+        int loop_guard = 350
+        while acc_v < target_v and loop_guard > 0
+            loop_guard := loop_guard - 1
+            int test_up = up_k + 1
+            int test_dn = dn_k - 1
+            int idx_u   = array.indexof(arr_price_int, test_up)
+            int idx_d   = array.indexof(arr_price_int, test_dn)
+            float vu    = idx_u >= 0 ? array.get(arr_vol_bin, idx_u) : 0.0
+            float vd    = idx_d >= 0 ? array.get(arr_vol_bin, idx_d) : 0.0
+            if vu == 0.0 and vd == 0.0 and (test_up - poc_key > 200 and poc_key - test_dn > 200)
+                break
+            if vu >= vd and vu > 0.0
+                acc_v := acc_v + vu
+                up_k  := test_up
+            else if vd > 0.0
+                acc_v := acc_v + vd
+                dn_k  := test_dn
+            else
+                up_k  := test_up
+                dn_k  := test_dn
+        cur_vah_val := float(up_k) * poc_step
+        cur_val_val := float(dn_k) * poc_step
+
+
+// ==============================================================================
+// 5. ĐIỀU KIỆN KÍCH HOẠT LỆNH (ĐỒNG BỘ 100% VỚI BẢN INDICATOR)
+// ==============================================================================
+h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off)
+h1_ema   = request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
+mtf_h1   = h1_close > h1_ema
+
+atr_val         = ta.atr(14)
+vol_ma20        = ta.sma(volume, 20)
+candle_range    = high - low
+min_candle_size = nz(atr_val * 0.25, syminfo.mintick * 10)
+body_size       = math.abs(close - open)
+lower_wick      = math.min(open, close) - low
+upper_wick      = high - math.max(open, close)
+
+is_pin_buy      = candle_range >= min_candle_size and lower_wick >= body_size * 1.2 and lower_wick >= candle_range * 0.4
+is_engulf_buy   = close > open and close > high[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
+
+is_pin_sell     = candle_range >= min_candle_size and upper_wick >= body_size * 1.2 and upper_wick >= candle_range * 0.4
+is_engulf_sell  = close < open and close < low[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
+
+two_bar_conf_buy  = (is_pin_buy[1] or low[1] <= ema_low[1]) and (close > open) and (close >= (open[1] + close[1]) * 0.5)
+two_bar_conf_sell = (is_pin_sell[1] or high[1] >= ema_high[1]) and (close < open) and (close <= (open[1] + close[1]) * 0.5)
+
+has_rejection_buy  = require_2bar ? (is_engulf_buy or two_bar_conf_buy) : (is_pin_buy or is_engulf_buy)
+has_rejection_sell = require_2bar ? (is_engulf_sell or two_bar_conf_sell) : (is_pin_sell or is_engulf_sell)
+
+cross_up_ema = ta.crossover(close, ema_close)
+cross_dn_ema = ta.crossunder(close, ema_close)
+
+float active_res = not na(cur_res_price) ? cur_res_price : (not na(day_high_price) and day_high_price > close ? day_high_price : na)
+float active_sup = not na(cur_sup_price) ? cur_sup_price : (not na(day_low_price) and day_low_price < close ? day_low_price : na)
+dist_res = not na(active_res) ? math.max(0.0, active_res - close) : na
+dist_sup = not na(active_sup) ? math.max(0.0, close - active_sup) : na
+
+has_room_buy  = na(dist_res) or (dist_res >= sl_fixed_pts * 1.1)
+has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
+
+in_london_kz  = not na(time(timeframe.period, "0700-1100:1234567", "UTC"))
+in_newyork_kz = not na(time(timeframe.period, "1230-1600:1234567", "UTC"))
+is_golden_kz  = in_london_kz or in_newyork_kz
+is_spread     = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
+time_allowed  = not is_spread and (not filter_kz or is_golden_kz)
+
+dragon_bearish  = (ema_high < ema_89) and (ema_close < ema_close[2])
+dragon_bullish  = (ema_low > ema_89) and (ema_close > ema_close[2])
+dragon_in_ema89 = (ema_high >= ema_89) and (ema_low <= ema_89)
+ema89_slope = math.abs(ema_89 - nz(ema_89[8], ema_89)) / (8.0 * nz(atr_val, 1.0))
+is_sideway  = (ema89_slope < 0.085 or dragon_in_ema89) and not dragon_bearish and not dragon_bullish
+
+// Tín hiệu Xu Hướng
+trend_buy_trigger  = not is_sideway and (close > ema_89) and mtf_h1 and cross_up_ema and (low <= ema_high) and has_rejection_buy and time_allowed and has_room_buy
+trend_sell_trigger = not is_sideway and (close < ema_89) and not mtf_h1 and cross_dn_ema and (high >= ema_low) and has_rejection_sell and time_allowed and has_room_sell
+
+// Tín hiệu Sideway Ping-Pong
+bool is_above_vah = not na(cur_vah_val) and close > cur_vah_val
+bool is_below_val = not na(cur_val_val) and close < cur_val_val
+near_res = (not na(cur_res_price) and high >= cur_res_price - 2.5 and close <= cur_res_price) or (not na(cur_vah_val) and high >= cur_vah_val - 1.5 and close <= cur_vah_val and not is_above_vah)
+near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cur_sup_price) or (not na(cur_val_val) and low <= cur_val_val + 1.5 and close >= cur_val_val and not is_below_val)
+
+safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and time_allowed and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
+safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and time_allowed and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
+
+buy_trigger  = trend_buy_trigger or safe_ping_buy
+sell_trigger = trend_sell_trigger or safe_ping_sell
+
+var int last_sig_side = 0
+var int last_sig_bar  = 0
+valid_buy  = buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and in_date and barstate.isconfirmed
+valid_sell = sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and in_date and barstate.isconfirmed
+
+
+// ==============================================================================
+// 6. THUẬT TOÁN KHỚP LỆNH STRATEGY: CHỐT 50% TP1 & DỜI BE VỀ ENTRY
+// ==============================================================================
+var float strat_entry_price = na
+var float strat_sl_price    = na
+var float strat_tp1_price   = na
+var float strat_tp2_price   = na
+var bool  strat_hit_tp1     = false
+
+if valid_buy and strategy.position_size == 0
+    last_sig_side := 1
+    last_sig_bar  := bar_index
+    strat_entry_price := close
+    strat_hit_tp1     := false
+    
+    // Tính SL thông minh
+    if not na(cur_sup_price) and cur_sup_price < close and (close - cur_sup_price <= sl_fixed_pts * 1.5)
+        strat_sl_price := cur_sup_price - 1.5
+    else
+        strat_sl_price := close - sl_fixed_pts
+        
+    float sl_dist     = math.abs(close - strat_sl_price)
+    float min_tp_dist = sl_dist * min_rr_ratio
+    
+    // Tính TP1 (Đảm bảo R:R >= min_rr_ratio 1.5)
+    if tp_mode == "🎯 Tự Động Theo POC & Cản"
+        if not na(cur_poc_val) and cur_poc_val >= close + min_tp_dist
+            strat_tp1_price := cur_poc_val
+        else if not na(cur_res_price) and cur_res_price - 0.5 >= close + min_tp_dist
+            strat_tp1_price := cur_res_price - 0.5
+        else if not na(day_high_price) and day_high_price - 0.5 >= close + min_tp_dist
+            strat_tp1_price := day_high_price - 0.5
+        else
+            strat_tp1_price := close + (sl_dist * math.max(rr_ratio, min_rr_ratio))
+    else
+        strat_tp1_price := close + (sl_dist * rr_ratio)
+        
+    strat_tp2_price := close + (sl_dist * (rr_ratio + 1.0))
+    
+    // Vào 2 vị thế: Vị thế 1 chốt ở TP1, Vị thế 2 gồng tới TP2 với mốc BE
+    strategy.entry("BUY_1", strategy.long, qty=1, comment="Buy TP1 (50%)")
+    strategy.entry("BUY_2", strategy.long, qty=1, comment="Buy Runner (50%)")
+
+else if valid_sell and strategy.position_size == 0
+    last_sig_side := -1
+    last_sig_bar  := bar_index
+    strat_entry_price := close
+    strat_hit_tp1     := false
+    
+    // Tính SL thông minh
+    if not na(cur_res_price) and cur_res_price > close and (cur_res_price - close <= sl_fixed_pts * 1.5)
+        strat_sl_price := cur_res_price + 1.5
+    else
+        strat_sl_price := close + sl_fixed_pts
+        
+    float sl_dist     = math.abs(strat_sl_price - close)
+    float min_tp_dist = sl_dist * min_rr_ratio
+    
+    // Tính TP1 (Đảm bảo R:R >= min_rr_ratio 1.5)
+    if tp_mode == "🎯 Tự Động Theo POC & Cản"
+        if not na(cur_poc_val) and cur_poc_val <= close - min_tp_dist
+            strat_tp1_price := cur_poc_val
+        else if not na(cur_sup_price) and cur_sup_price + 0.5 <= close - min_tp_dist
+            strat_tp1_price := cur_sup_price + 0.5
+        else if not na(day_low_price) and day_low_price + 0.5 <= close - min_tp_dist
+            strat_tp1_price := day_low_price + 0.5
+        else
+            strat_tp1_price := close - (sl_dist * math.max(rr_ratio, min_rr_ratio))
+    else
+        strat_tp1_price := close - (sl_dist * rr_ratio)
+        
+    strat_tp2_price := close - (sl_dist * (rr_ratio + 1.0))
+    
+    // Vào 2 vị thế SELL
+    strategy.entry("SELL_1", strategy.short, qty=1, comment="Sell TP1 (50%)")
+    strategy.entry("SELL_2", strategy.short, qty=1, comment="Sell Runner (50%)")
+
+
+// ==============================================================================
+// 7. QUẢN LÝ THOÁT LỆNH & DỜI BE VỀ ENTRY
+// ==============================================================================
+if strategy.position_size > 0
+    // Nếu chạm TP1 -> Kích hoạt cờ dời BE
+    if high >= strat_tp1_price
+        strat_hit_tp1 := true
+        
+    float current_runner_sl = strat_hit_tp1 ? strat_entry_price : strat_sl_price
+    
+    // Đóng vị thế 1 tại TP1
+    strategy.exit("EXIT_BUY_1", "BUY_1", limit=strat_tp1_price, stop=strat_sl_price, comment_profit="TP1 Chốt", comment_loss="SL Dính")
+    
+    // Đóng vị thế 2 tại TP2 hoặc mốc BE Entry nếu đã cắn TP1
+    strategy.exit("EXIT_BUY_2", "BUY_2", limit=strat_tp2_price, stop=current_runner_sl, comment_profit="TP2 Runner", comment_loss=strat_hit_tp1 ? "BE Hòa Vốn" : "SL Dính")
+
+else if strategy.position_size < 0
+    // Nếu chạm TP1 -> Kích hoạt cờ dời BE
+    if low <= strat_tp1_price
+        strat_hit_tp1 := true
+        
+    float current_runner_sl = strat_hit_tp1 ? strat_entry_price : strat_sl_price
+    
+    // Đóng vị thế 1 tại TP1
+    strategy.exit("EXIT_SELL_1", "SELL_1", limit=strat_tp1_price, stop=strat_sl_price, comment_profit="TP1 Chốt", comment_loss="SL Dính")
+    
+    // Đóng vị thế 2 tại TP2 hoặc mốc BE Entry nếu đã cắn TP1
+    strategy.exit("EXIT_SELL_2", "SELL_2", limit=strat_tp2_price, stop=current_runner_sl, comment_profit="TP2 Runner", comment_loss=strat_hit_tp1 ? "BE Hòa Vốn" : "SL Dính")
