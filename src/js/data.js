@@ -136,8 +136,14 @@ export const DataService = {
     return true;
   },
 
-  clearAllTrades() {
+  async clearAllTrades() {
     this.saveTrades([]);
+    try {
+      await supabase.from('trades').delete().neq('id', '___none___');
+      console.log('🗑️ Đã xóa sạch dữ liệu giao dịch trên Supabase Cloud.');
+    } catch (e) {
+      console.warn('Supabase delete failed:', e);
+    }
   },
 
   getAccounts() {
@@ -342,16 +348,14 @@ export const DataService = {
   },
 
   async resetAllData() {
-    const trades = this.getTrades();
-    localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify([]));
+    this.saveTrades([]);
     localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(defaultAccounts));
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT, defaultAccounts[0].id);
     localStorage.setItem(STORAGE_KEYS.DIARY, JSON.stringify([]));
 
     try {
-      if (trades.length > 0) {
-        await supabase.from('trades').delete().neq('id', '___none___');
-      }
+      await supabase.from('trades').delete().neq('id', '___none___');
+      console.log('🗑️ Đã xóa sạch toàn bộ dữ liệu trên Supabase Cloud.');
     } catch (e) {
       console.warn('Supabase reset failed (offline/no schema):', e);
     }

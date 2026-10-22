@@ -346,9 +346,9 @@ class AppController {
     }
 
     if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
+      resetBtn.addEventListener('click', async () => {
         if (confirm('Bạn có chắc chắn muốn xóa sạch dữ liệu nhật ký về 0 để tự ghi mới?')) {
-          DataService.clearAllTrades();
+          await DataService.clearAllTrades();
           this.refreshCurrentView();
           this.updateAccountBadge();
           alert('🗑️ Đã xóa sạch dữ liệu!');
@@ -824,9 +824,9 @@ class AppController {
     }
 
     if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
+      resetBtn.addEventListener('click', async () => {
         if (confirm('Bạn có chắc chắn muốn xóa sạch toàn bộ nhật ký để bắt đầu tài khoản mới không?')) {
-          DataService.resetAllData();
+          await DataService.resetAllData();
           modal.classList.remove('active');
           this.calendarEngine.render();
           this.updateAccountBadge();
