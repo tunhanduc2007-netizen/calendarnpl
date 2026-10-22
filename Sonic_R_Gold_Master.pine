@@ -101,35 +101,51 @@ else
     day_high_price := math.max(nz(day_high_price, high), high)
     day_low_price  := math.min(nz(day_low_price, low), low)
 
+// Kiểm tra xem Đỉnh/Đáy ngày có sát vùng với Kháng Cự / Hỗ Trợ Pivot không (Dung sai gộp: <= 2.0 giá Vàng)
+bool is_same_res = show_sr and not na(cur_res_price) and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+bool is_same_sup = show_sr and not na(cur_sup_price) and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+
+// Vẽ Đỉnh Hôm Nay
 if show_hl_day and not na(day_high_price)
-    line.delete(line_d_hi)
-    label.delete(lbl_d_hi)
     int s_bar = na(day_start_bar) ? bar_index - 10 : day_start_bar
-    line_d_hi := line.new(s_bar, day_high_price, bar_index + 16, day_high_price, color=color.new(#f43f5e, 20), width=1, style=line.style_dotted)
-    // Nếu mức giá không trùng với Kháng Cự Pivot thì mới vẽ nhãn Đỉnh riêng
-    bool is_same_res = show_sr and not na(cur_res_price) and math.abs(cur_res_price - day_high_price) < 0.3
-    if not is_same_res
-        lbl_d_hi := label.new(bar_index + 16, day_high_price, "👑 ĐỈNH HÔM NAY: " + str.tostring(day_high_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#fb7185, style=label.style_label_left, size=size.small)
+    if is_same_res
+        // Đã gộp chung với Kháng Cự -> Xóa sạch đường và nhãn đỉnh riêng để chống đè chữ 100%
+        line.delete(line_d_hi)
+        label.delete(lbl_d_hi)
+        line_d_hi := na
+        lbl_d_hi  := na
+    else
+        // Khi đứng riêng biệt: Vẽ nhãn so le bên phải X = bar_index + 28 để không bao giờ chạm cản khác
+        line.delete(line_d_hi)
+        label.delete(lbl_d_hi)
+        line_d_hi := line.new(s_bar, day_high_price, bar_index + 28, day_high_price, color=color.new(#f43f5e, 30), width=1, style=line.style_dotted)
+        lbl_d_hi  := label.new(bar_index + 28, day_high_price, "👑 ĐỈNH HÔM NAY: " + str.tostring(day_high_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#fb7185, style=label.style_label_left, size=size.small)
 
 if show_hl_day and not na(line_d_hi)
-    line.set_x2(line_d_hi, bar_index + 16)
+    line.set_x2(line_d_hi, bar_index + 28)
     if not na(lbl_d_hi)
-        label.set_x(lbl_d_hi, bar_index + 16)
+        label.set_x(lbl_d_hi, bar_index + 28)
 
+// Vẽ Đáy Hôm Nay
 if show_hl_day and not na(day_low_price)
-    line.delete(line_d_lo)
-    label.delete(lbl_d_lo)
     int s_bar = na(day_start_bar) ? bar_index - 10 : day_start_bar
-    line_d_lo := line.new(s_bar, day_low_price, bar_index + 16, day_low_price, color=color.new(#10b981, 20), width=1, style=line.style_dotted)
-    // Nếu mức giá không trùng với Hỗ Trợ Pivot thì mới vẽ nhãn Đáy riêng
-    bool is_same_sup = show_sr and not na(cur_sup_price) and math.abs(cur_sup_price - day_low_price) < 0.3
-    if not is_same_sup
-        lbl_d_lo := label.new(bar_index + 16, day_low_price, "🛡️ ĐÁY HÔM NAY: " + str.tostring(day_low_price, "#.##"), color=color.new(#10b981, 100), textcolor=#34d399, style=label.style_label_left, size=size.small)
+    if is_same_sup
+        // Đã gộp chung với Hỗ Trợ -> Xóa sạch đường và nhãn đáy riêng để chống đè chữ 100%
+        line.delete(line_d_lo)
+        label.delete(lbl_d_lo)
+        line_d_lo := na
+        lbl_d_lo  := na
+    else
+        // Khi đứng riêng biệt: Vẽ nhãn so le bên phải X = bar_index + 28 để không bao giờ chạm cản khác
+        line.delete(line_d_lo)
+        label.delete(lbl_d_lo)
+        line_d_lo := line.new(s_bar, day_low_price, bar_index + 28, day_low_price, color=color.new(#10b981, 30), width=1, style=line.style_dotted)
+        lbl_d_lo  := label.new(bar_index + 28, day_low_price, "🛡️ ĐÁY HÔM NAY: " + str.tostring(day_low_price, "#.##"), color=color.new(#10b981, 100), textcolor=#34d399, style=label.style_label_left, size=size.small)
 
 if show_hl_day and not na(line_d_lo)
-    line.set_x2(line_d_lo, bar_index + 16)
+    line.set_x2(line_d_lo, bar_index + 28)
     if not na(lbl_d_lo)
-        label.set_x(lbl_d_lo, bar_index + 16)
+        label.set_x(lbl_d_lo, bar_index + 28)
 
 // B. CẢN HỖ TRỢ & KHÁNG CỰ PIVOT SWING SMC (ĐỘ NHẠY CAO & S/R FLIP)
 sr_hi = ta.pivothigh(high, sr_len, sr_len)
@@ -141,9 +157,15 @@ if not na(sr_hi)
     if show_sr
         line.delete(line_res)
         label.delete(lbl_res)
-        line_res := line.new(bar_index - sr_len, cur_res_price, bar_index + 16, cur_res_price, color=#f43f5e, width=2, style=line.style_solid)
-        string txt_res_tag = (not na(day_high_price) and math.abs(cur_res_price - day_high_price) < 0.3) ? "👑 ĐỈNH HÔM NAY & KHÁNG CỰ: " : "KHÁNG CỰ: "
-        lbl_res  := label.new(bar_index + 16, cur_res_price, txt_res_tag + str.tostring(cur_res_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#f43f5e, style=label.style_label_left, size=size.small)
+        line_res := line.new(bar_index - sr_len, cur_res_price, bar_index + 14, cur_res_price, color=#f43f5e, width=2, style=line.style_solid)
+        bool is_cur_same_res = show_hl_day and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+        string txt_res_tag = is_cur_same_res ? "👑 ĐỈNH HÔM NAY & KHÁNG CỰ: " : "KHÁNG CỰ: "
+        lbl_res  := label.new(bar_index + 14, cur_res_price, txt_res_tag + str.tostring(cur_res_price, "#.##"), color=color.new(#f43f5e, 100), textcolor=#f43f5e, style=label.style_label_left, size=size.small)
+        if is_cur_same_res
+            line.delete(line_d_hi)
+            label.delete(lbl_d_hi)
+            line_d_hi := na
+            lbl_d_hi  := na
 
 // 2. Khi phát hiện Đáy Hỗ Trợ Pivot mới
 if not na(sr_lo)
@@ -151,10 +173,15 @@ if not na(sr_lo)
     if show_sr
         line.delete(line_sup)
         label.delete(lbl_sup)
-        line_sup := line.new(bar_index - sr_len, cur_sup_price, bar_index + 16, cur_sup_price, color=#10b981, width=2, style=line.style_solid)
-        string txt_sup_tag = (not na(day_low_price) and math.abs(cur_sup_price - day_low_price) < 0.3) ? "🛡️ ĐÁY HÔM NAY & HỖ TRỢ: " : "HỖ TRỢ: "
-        lbl_sup  := label.new(bar_index + 16, cur_sup_price, txt_sup_tag + str.tostring(cur_sup_price, "#.##"), color=color.new(#10b981, 100), textcolor=#10b981, style=label.style_label_left, size=size.small)
-
+        line_sup := line.new(bar_index - sr_len, cur_sup_price, bar_index + 14, cur_sup_price, color=#10b981, width=2, style=line.style_solid)
+        bool is_cur_same_sup = show_hl_day and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+        string txt_sup_tag = is_cur_same_sup ? "🛡️ HỖ TRỢ & ĐÁY HÔM NAY: " : "HỖ TRỢ: "
+        lbl_sup  := label.new(bar_index + 14, cur_sup_price, txt_sup_tag + str.tostring(cur_sup_price, "#.##"), color=color.new(#10b981, 100), textcolor=#10b981, style=label.style_label_left, size=size.small)
+        if is_cur_same_sup
+            line.delete(line_d_lo)
+            label.delete(lbl_d_lo)
+            line_d_lo := na
+            lbl_d_lo  := na
 
 // 3. XỬ LÝ KHI PHÁ VỠ KHÁNG CỰ (BULLISH BREAKOUT)
 if not na(cur_res_price) and close > cur_res_price
@@ -167,8 +194,8 @@ if not na(cur_res_price) and close > cur_res_price
             label.delete(lbl_res)
             line.delete(line_sup)
             label.delete(lbl_sup)
-            line_sup := line.new(bar_index, broken_res, bar_index + 16, broken_res, color=#00f0ff, width=2, style=line.style_dashed)
-            lbl_sup  := label.new(bar_index + 16, broken_res, "FLIP HỖ TRỢ: " + str.tostring(broken_res, "#.##"), color=color.new(#00f0ff, 100), textcolor=#00f0ff, style=label.style_label_left, size=size.small)
+            line_sup := line.new(bar_index, broken_res, bar_index + 14, broken_res, color=#00f0ff, width=2, style=line.style_dashed)
+            lbl_sup  := label.new(bar_index + 14, broken_res, "FLIP HỖ TRỢ: " + str.tostring(broken_res, "#.##"), color=color.new(#00f0ff, 100), textcolor=#00f0ff, style=label.style_label_left, size=size.small)
     else
         if show_sr
             line.delete(line_res)
@@ -188,8 +215,8 @@ if not na(cur_sup_price) and close < cur_sup_price
             label.delete(lbl_sup)
             line.delete(line_res)
             label.delete(lbl_res)
-            line_res := line.new(bar_index, broken_sup, bar_index + 16, broken_sup, color=#fb923c, width=2, style=line.style_dashed)
-            lbl_res  := label.new(bar_index + 16, broken_sup, "FLIP CẢN: " + str.tostring(broken_sup, "#.##"), color=color.new(#fb923c, 100), textcolor=#fb923c, style=label.style_label_left, size=size.small)
+            line_res := line.new(bar_index, broken_sup, bar_index + 14, broken_sup, color=#fb923c, width=2, style=line.style_dashed)
+            lbl_res  := label.new(bar_index + 14, broken_sup, "FLIP CẢN: " + str.tostring(broken_sup, "#.##"), color=color.new(#fb923c, 100), textcolor=#fb923c, style=label.style_label_left, size=size.small)
     else
         if show_sr
             line.delete(line_sup)
@@ -198,14 +225,32 @@ if not na(cur_sup_price) and close < cur_sup_price
             lbl_sup  := na
     cur_sup_price := na // Giải phóng hỗ trợ để mở đường cho lệnh SELL theo trend
 
-// Kéo dài các cản còn hiệu lực sang các cây nến tiếp theo
+// Kéo dài các cản còn hiệu lực sang các cây nến tiếp theo & cập nhật nội dung nhãn linh hoạt
 if show_sr
     if not na(line_res) and not na(cur_res_price)
-        line.set_x2(line_res, bar_index + 16)
-        label.set_x(lbl_res, bar_index + 16)
+        line.set_x2(line_res, bar_index + 14)
+        if not na(lbl_res)
+            label.set_x(lbl_res, bar_index + 14)
+            bool is_merge_res = show_hl_day and not na(day_high_price) and math.abs(cur_res_price - day_high_price) <= 2.0
+            string txt_cur_res = is_merge_res ? ("👑 ĐỈNH HÔM NAY & KHÁNG CỰ: " + str.tostring(cur_res_price, "#.##")) : ("KHÁNG CỰ: " + str.tostring(cur_res_price, "#.##"))
+            label.set_text(lbl_res, txt_cur_res)
+            if is_merge_res
+                line.delete(line_d_hi)
+                label.delete(lbl_d_hi)
+                line_d_hi := na
+                lbl_d_hi  := na
     if not na(line_sup) and not na(cur_sup_price)
-        line.set_x2(line_sup, bar_index + 16)
-        label.set_x(lbl_sup, bar_index + 16)
+        line.set_x2(line_sup, bar_index + 14)
+        if not na(lbl_sup)
+            label.set_x(lbl_sup, bar_index + 14)
+            bool is_merge_sup = show_hl_day and not na(day_low_price) and math.abs(cur_sup_price - day_low_price) <= 2.0
+            string txt_cur_sup = is_merge_sup ? ("🛡️ HỖ TRỢ & ĐÁY HÔM NAY: " + str.tostring(cur_sup_price, "#.##")) : ("HỖ TRỢ: " + str.tostring(cur_sup_price, "#.##"))
+            label.set_text(lbl_sup, txt_cur_sup)
+            if is_merge_sup
+                line.delete(line_d_lo)
+                label.delete(lbl_d_lo)
+                line_d_lo := na
+                lbl_d_lo  := na
 
 
 // ==============================================================================
@@ -305,12 +350,12 @@ if show_poc and not na(cur_poc_val)
     line.delete(line_poc_today)
     label.delete(lbl_poc_today)
     int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
-    line_poc_today := line.new(start_b, cur_poc_val, bar_index + 16, cur_poc_val, color=#f59e0b, width=2, style=line.style_solid)
-    lbl_poc_today  := label.new(bar_index + 16, cur_poc_val, "🎯 POC HÔM NAY: " + str.tostring(cur_poc_val, "#.##"), color=color.new(#f59e0b, 100), textcolor=#f59e0b, style=label.style_label_left, size=size.small)
+    line_poc_today := line.new(start_b, cur_poc_val, bar_index + 14, cur_poc_val, color=#f59e0b, width=2, style=line.style_solid)
+    lbl_poc_today  := label.new(bar_index + 14, cur_poc_val, "🎯 POC HÔM NAY: " + str.tostring(cur_poc_val, "#.##"), color=color.new(#f59e0b, 100), textcolor=#f59e0b, style=label.style_label_left, size=size.small)
 
 if show_poc and not na(line_poc_today)
-    line.set_x2(line_poc_today, bar_index + 16)
-    label.set_x(lbl_poc_today, bar_index + 16)
+    line.set_x2(line_poc_today, bar_index + 14)
+    label.set_x(lbl_poc_today, bar_index + 14)
 
 // 2. Đường POC Hôm Qua (Nam châm tím nét đứt)
 var line  line_poc_prev = na
@@ -319,12 +364,14 @@ var label lbl_poc_prev  = na
 if show_prev_poc and not na(prev_poc_val)
     line.delete(line_poc_prev)
     label.delete(lbl_poc_prev)
-    line_poc_prev := line.new(bar_index - 40, prev_poc_val, bar_index + 16, prev_poc_val, color=#c084fc, width=2, style=line.style_dashed)
-    lbl_poc_prev  := label.new(bar_index + 16, prev_poc_val, "🧲 POC HÔM QUA: " + str.tostring(prev_poc_val, "#.##"), color=color.new(#c084fc, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+    int x_prev = (not na(cur_poc_val) and math.abs(prev_poc_val - cur_poc_val) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_poc_prev := line.new(bar_index - 40, prev_poc_val, x_prev, prev_poc_val, color=#c084fc, width=2, style=line.style_dashed)
+    lbl_poc_prev  := label.new(x_prev, prev_poc_val, "🧲 POC HÔM QUA: " + str.tostring(prev_poc_val, "#.##"), color=color.new(#c084fc, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
 
 if show_prev_poc and not na(line_poc_prev)
-    line.set_x2(line_poc_prev, bar_index + 16)
-    label.set_x(lbl_poc_prev, bar_index + 16)
+    int x_prev = (not na(cur_poc_val) and math.abs(prev_poc_val - cur_poc_val) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_poc_prev, x_prev)
+    label.set_x(lbl_poc_prev, x_prev)
 
 // 3. Đường VAH & VAL (VÙNG GIÁ TRỊ 70% KHỐI LƯỢNG & ĐỔI MÀU KHI PHÁ VỠ)
 var line  line_vah = na
@@ -340,7 +387,7 @@ bool is_below_val = not na(cur_val_val) and close < cur_val_val
 if show_va_box and show_va and not na(cur_vah_val) and not na(cur_val_val)
     box.delete(box_va)
     int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
-    box_va := box.new(start_b, cur_vah_val, bar_index + 16, cur_val_val, 
+    box_va := box.new(start_b, cur_vah_val, bar_index + 21, cur_val_val, 
                       border_color=color.new(#a855f7, 80), 
                       border_width=1, 
                       border_style=line.style_dotted, 
@@ -364,12 +411,14 @@ if show_va and not na(cur_vah_val)
         w_vah   := 2
         txt_vah := "🔥 VAH: " + str.tostring(cur_vah_val, "#.##") + " [PHÁ TĂNG • BỆ ĐỠ]"
         
-    line_vah := line.new(start_b, cur_vah_val, bar_index + 16, cur_vah_val, color=col_vah, width=w_vah, style=line.style_dashed)
-    lbl_vah  := label.new(bar_index + 16, cur_vah_val, txt_vah, color=color.new(col_vah, 100), textcolor=col_vah, style=label.style_label_left, size=size.small)
+    int x_vah = (not na(cur_res_price) and math.abs(cur_vah_val - cur_res_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_vah := line.new(start_b, cur_vah_val, x_vah, cur_vah_val, color=col_vah, width=w_vah, style=line.style_dashed)
+    lbl_vah  := label.new(x_vah, cur_vah_val, txt_vah, color=color.new(col_vah, 100), textcolor=col_vah, style=label.style_label_left, size=size.small)
 
 if show_va and not na(line_vah)
-    line.set_x2(line_vah, bar_index + 16)
-    label.set_x(lbl_vah, bar_index + 16)
+    int x_vah = (not na(cur_res_price) and math.abs(cur_vah_val - cur_res_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_vah, x_vah)
+    label.set_x(lbl_vah, x_vah)
 
 // Vẽ VAL (Mép dưới Vùng Giá Trị 70%)
 if show_va and not na(cur_val_val)
@@ -387,12 +436,14 @@ if show_va and not na(cur_val_val)
         w_val   := 2
         txt_val := "⚡ VAL: " + str.tostring(cur_val_val, "#.##") + " [PHÁ GIẢM • CẢN ĐÈ]"
         
-    line_val := line.new(start_b, cur_val_val, bar_index + 16, cur_val_val, color=col_val, width=w_val, style=line.style_dashed)
-    lbl_val  := label.new(bar_index + 16, cur_val_val, txt_val, color=color.new(col_val, 100), textcolor=col_val, style=label.style_label_left, size=size.small)
+    int x_val = (not na(cur_sup_price) and math.abs(cur_val_val - cur_sup_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line_val := line.new(start_b, cur_val_val, x_val, cur_val_val, color=col_val, width=w_val, style=line.style_dashed)
+    lbl_val  := label.new(x_val, cur_val_val, txt_val, color=color.new(col_val, 100), textcolor=col_val, style=label.style_label_left, size=size.small)
 
 if show_va and not na(line_val)
-    line.set_x2(line_val, bar_index + 16)
-    label.set_x(lbl_val, bar_index + 16)
+    int x_val = (not na(cur_sup_price) and math.abs(cur_val_val - cur_sup_price) <= 2.5) ? bar_index + 21 : bar_index + 14
+    line.set_x2(line_val, x_val)
+    label.set_x(lbl_val, x_val)
 
 
 // ==============================================================================
