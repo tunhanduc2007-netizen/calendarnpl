@@ -103,7 +103,7 @@
 
       <!-- Main Navigation Menu -->
       <nav class="sidebar-nav">
-        <!-- 1. Calendar -->
+        <!-- 1. Lịch (Calendar) -->
         <button class="nav-item active" data-view="calendar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect width="18" height="18" x="3" y="4" rx="2"/>
@@ -114,14 +114,14 @@
           <span>Lịch</span>
         </button>
 
-        <!-- 2. Journal -->
-        <button class="nav-item" data-view="journal">
+        <!-- 2. Thống Kê (Stats) - Đưa lên vị trí thứ 2 -->
+        <button class="nav-item" data-view="stats">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-            <path d="M6 6h10"/>
-            <path d="M6 10h10"/>
+            <line x1="18" x2="18" y1="20" y2="10"/>
+            <line x1="12" x2="12" y1="20" y2="4"/>
+            <line x1="6" x2="6" y1="20" y2="14"/>
           </svg>
-          <span>Nhật Ký</span>
+          <span>Thống Kê</span>
         </button>
 
         <!-- 3. Center Mobile Action Button (+ Ghi PnL) -->
@@ -135,7 +135,7 @@
           <span>Ghi PnL</span>
         </button>
 
-        <!-- 4. Arena: Mục Tiêu & Rank -->
+        <!-- 4. Mục Tiêu (Arena & Leo Rank) -->
         <button class="nav-item" data-view="arena" title="Đấu Trường Mục Tiêu & Leo Rank">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
@@ -147,17 +147,26 @@
           <span>Mục Tiêu</span>
         </button>
 
-        <!-- 5. Stats -->
-        <button class="nav-item" data-view="stats">
+        <!-- 5. Mobile Menu Button (Mở Bottom Sheet chứa các tính năng còn lại) -->
+        <button class="nav-item mobile-only-nav" id="btn-mobile-menu" type="button" title="Menu tính năng khác">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" x2="18" y1="20" y2="10"/>
-            <line x1="12" x2="12" y1="20" y2="4"/>
-            <line x1="6" x2="6" y1="20" y2="14"/>
+            <line x1="4" x2="20" y1="12" y2="12"/>
+            <line x1="4" x2="20" y1="6" y2="6"/>
+            <line x1="4" x2="20" y1="18" y2="18"/>
           </svg>
-          <span>Thống Kê</span>
+          <span>Menu</span>
         </button>
 
-        <!-- Desktop-Only Nav Items -->
+        <!-- Desktop-Only Nav Items (Ẩn hoàn toàn trên mobile) -->
+        <button class="nav-item desktop-only-nav" data-view="journal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+          <span>Nhật Ký</span>
+        </button>
+
         <button class="nav-item desktop-only-nav" data-view="insights">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -623,6 +632,132 @@
           <button type="submit" class="btn btn-primary">Lưu Vào Nhật Ký</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: MORE MENU (BOTTOM SHEET FOR MOBILE) ==================== -->
+  <div class="modal-overlay" id="modal-more-menu">
+    <div class="modal-card modal-sheet-menu">
+      <div class="ios-drag-handle" data-modal="modal-more-menu"></div>
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="color: #00f0ff;">
+            <rect width="7" height="7" x="3" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="14" rx="1.5"/>
+            <rect width="7" height="7" x="3" y="14" rx="1.5"/>
+          </svg>
+          <span>Menu & Công Cụ Khác</span>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-more-menu">&times;</button>
+      </div>
+
+      <div class="more-menu-grid">
+        <!-- 1. Journal -->
+        <button class="more-menu-item" data-menu-action="view" data-view="journal">
+          <div class="menu-item-icon icon-journal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+              <path d="M6 6h10"/>
+              <path d="M6 10h10"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Nhật Ký Lệnh (Journal)</div>
+            <div class="menu-item-desc">Lịch sử chi tiết từng lệnh, ghi chú & ảnh chart</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+
+        <!-- 2. Insights -->
+        <button class="more-menu-item" data-menu-action="view" data-view="insights">
+          <div class="menu-item-icon icon-insights">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4"/>
+              <path d="M12 8h.01"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Phân Tích Trading</div>
+            <div class="menu-item-desc">Tỷ lệ thắng theo khung giờ, cặp tiền, rủi ro</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+
+        <!-- 3. Dashboard -->
+        <button class="more-menu-item" data-menu-action="view" data-view="dashboard">
+          <div class="menu-item-icon icon-dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <rect width="7" height="9" x="3" y="3" rx="1"/>
+              <rect width="7" height="5" x="14" y="3" rx="1"/>
+              <rect width="7" height="9" x="14" y="12" rx="1"/>
+              <rect width="7" height="5" x="3" y="16" rx="1"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Dashboard Tổng Quan</div>
+            <div class="menu-item-desc">Biểu đồ đường vốn & hiệu suất tổng thể</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+
+        <!-- 4. Trade Diary -->
+        <button class="more-menu-item" data-menu-action="view" data-view="diary">
+          <div class="menu-item-icon icon-diary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 1 3-3h7z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Tâm Lý & Kỷ Luật</div>
+            <div class="menu-item-desc">Nhật ký cảm xúc từng phiên, chấm điểm kỷ luật</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+
+        <!-- 5. Settings / Account -->
+        <button class="more-menu-item" id="btn-menu-open-account">
+          <div class="menu-item-icon icon-settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Cài Đặt Vốn & Dữ Liệu</div>
+            <div class="menu-item-desc">Đổi số vốn ban đầu, nạp mẫu, Cloud sync</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+
+        <!-- 6. Request Feature -->
+        <button class="more-menu-item" id="btn-menu-request-feature">
+          <div class="menu-item-icon icon-feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="menu-item-info">
+            <div class="menu-item-title">Góp Ý Tính Năng</div>
+            <div class="menu-item-desc">Yêu cầu tính năng mới trực tiếp tới Dev</div>
+          </div>
+          <svg class="menu-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 

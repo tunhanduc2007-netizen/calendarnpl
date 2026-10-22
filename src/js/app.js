@@ -102,9 +102,50 @@ class AppController {
     navItems.forEach(item => {
       item.addEventListener('click', () => {
         const viewId = item.getAttribute('data-view');
-        this.switchView(viewId);
+        if (viewId) this.switchView(viewId);
       });
     });
+
+    // Mobile Bottom Nav Menu Button (Opens More Menu Bottom Sheet)
+    const mobileMenuBtn = document.getElementById('btn-mobile-menu');
+    const moreMenuModal = document.getElementById('modal-more-menu');
+    if (mobileMenuBtn && moreMenuModal) {
+      mobileMenuBtn.addEventListener('click', () => {
+        if (navigator.vibrate) navigator.vibrate(12);
+        moreMenuModal.classList.add('active');
+      });
+    }
+
+    // Handle clicks inside More Menu Bottom Sheet
+    document.querySelectorAll('#modal-more-menu [data-menu-action="view"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const viewId = btn.getAttribute('data-view');
+        if (moreMenuModal) moreMenuModal.classList.remove('active');
+        if (viewId) this.switchView(viewId);
+      });
+    });
+
+    // Account settings from More Menu
+    const menuOpenAccount = document.getElementById('btn-menu-open-account');
+    const accountModal = document.getElementById('modal-account');
+    if (menuOpenAccount && accountModal && moreMenuModal) {
+      menuOpenAccount.addEventListener('click', () => {
+        moreMenuModal.classList.remove('active');
+        accountModal.classList.add('active');
+      });
+    }
+
+    // Request feature from More Menu
+    const menuReqFeature = document.getElementById('btn-menu-request-feature');
+    if (menuReqFeature && moreMenuModal) {
+      menuReqFeature.addEventListener('click', () => {
+        moreMenuModal.classList.remove('active');
+        const feature = prompt('💡 Bạn muốn đề xuất thêm tính năng nào cho My PnL?');
+        if (feature) {
+          alert('Cảm ơn đóng góp của bạn! Tính năng đã được ghi nhận vào lộ trình nâng cấp.');
+        }
+      });
+    }
 
     // Toggle Sidebar collapse
     const toggleSidebarBtn = document.getElementById('btn-toggle-sidebar');
@@ -182,6 +223,7 @@ class AppController {
   switchView(viewId) {
     if (!viewId) return;
     const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+    const mobileMenuBtn = document.getElementById('btn-mobile-menu');
     const viewTitleText = document.getElementById('page-title-text');
 
     const viewTitles = {
@@ -194,6 +236,9 @@ class AppController {
       arena: 'Mục Tiêu & Leo Rank'
     };
 
+    // Sub-views accessed via the Mobile Menu
+    const menuSubViews = ['journal', 'insights', 'dashboard', 'diary'];
+
     navItems.forEach(btn => {
       if (btn.getAttribute('data-view') === viewId) {
         btn.classList.add('active');
@@ -201,6 +246,15 @@ class AppController {
         btn.classList.remove('active');
       }
     });
+
+    // Highlight Menu tab on mobile if user is inside a menu sub-view
+    if (mobileMenuBtn) {
+      if (menuSubViews.includes(viewId)) {
+        mobileMenuBtn.classList.add('active');
+      } else {
+        mobileMenuBtn.classList.remove('active');
+      }
+    }
 
     const allViews = document.querySelectorAll('.view-container');
     allViews.forEach(v => v.classList.remove('active'));
