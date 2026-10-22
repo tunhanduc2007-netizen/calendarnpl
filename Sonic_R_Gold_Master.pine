@@ -28,6 +28,10 @@ show_signals= input.bool(true, "Hiển thị Tín Hiệu Mua / Bán", group=grp_
 lbl_theme   = input.string("🏛️ Chuyên Nghiệp (Institutional Pro)", "Phong Cách Nhãn Tín Hiệu", options=["🏛️ Chuyên Nghiệp (Institutional Pro)", "⚡ Tối Giản (1 Dòng)", "🔥 Cổ Điển"], group=grp_sig, display=display.none)
 tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig, display=display.none)
 allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig, display=display.none)
+require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến (Chống Rút Râu Ảo)", group=grp_sig, display=display.none)
+grade_filter= input.bool(true, "Phân Hạng Kèo A+ / B (Cảnh Báo Giảm Lot)", group=grp_sig, display=display.none)
+filter_kz   = input.bool(true, "Bật Lá Chắn Khung Giờ Vàng (Phiên Âu 14h-18h & Mỹ 19h30-23h)", group=grp_sig, display=display.none)
+show_be_line= input.bool(true, "Vẽ Mốc BE Khóa Hòa Vốn (+1.5R) & Đường TP/SL", group=grp_sig, display=display.none)
 sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Tối Đa (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
 rr_ratio    = input.float(2.0, "Tỷ lệ Ăn Lời R:R (Nếu chọn R:R cố định)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
 
@@ -381,20 +385,33 @@ h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off,
 h1_ema   = request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
 mtf_h1   = h1_close > h1_ema
 
+// 1. Phân tích nến & Xung lực
 atr_val         = ta.atr(14)
+vol_ma20        = ta.sma(volume, 20)
+is_vol_surge    = na(volume) or (volume >= vol_ma20 * 1.20)
+
 candle_range    = high - low
 min_candle_size = nz(atr_val * 0.25, syminfo.mintick * 10)
 body_size       = math.abs(close - open)
 lower_wick      = math.min(open, close) - low
 upper_wick      = high - math.max(open, close)
 
+// Nến từ chối đơn lẻ (Setup Candle)
 is_pin_buy      = candle_range >= min_candle_size and lower_wick >= body_size * 1.2 and lower_wick >= candle_range * 0.4
-is_engulf_buy   = close > open and close > high[1] and candle_range >= min_candle_size
-has_rejection_buy = is_pin_buy or is_engulf_buy
+is_engulf_buy   = close > open and close > high[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
 
 is_pin_sell     = candle_range >= min_candle_size and upper_wick >= body_size * 1.2 and upper_wick >= candle_range * 0.4
-is_engulf_sell  = close < open and close < low[1] and candle_range >= min_candle_size
-has_rejection_sell = is_pin_sell or is_engulf_sell
+is_engulf_sell  = close < open and close < low[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
+
+// 2. BỘ LỌC XÁC NHẬN 2 CÂY NẾN (CHỐNG BẪY RÚT RÂU ẢO)
+// Cây 1 setup rút chân + Cây 2 xác nhận đóng cửa thuận chiều vượt 50% thân nến 1
+candle1_mid_buy   = (open[1] + close[1]) * 0.5
+candle1_mid_sell  = (open[1] + close[1]) * 0.5
+two_bar_conf_buy  = (is_pin_buy[1] or low[1] <= ema_low[1]) and (close > open) and (close >= candle1_mid_buy)
+two_bar_conf_sell = (is_pin_sell[1] or high[1] >= ema_high[1]) and (close < open) and (close <= candle1_mid_sell)
+
+has_rejection_buy  = require_2bar ? (is_engulf_buy or two_bar_conf_buy) : (is_pin_buy or is_engulf_buy)
+has_rejection_sell = require_2bar ? (is_engulf_sell or two_bar_conf_sell) : (is_pin_sell or is_engulf_sell)
 
 cross_up_ema = ta.crossover(close, ema_close)
 cross_dn_ema = ta.crossunder(close, ema_close)
@@ -407,7 +424,16 @@ dist_sup = not na(active_sup) ? math.max(0.0, close - active_sup) : na
 has_room_buy  = na(dist_res) or (dist_res >= sl_fixed_pts * 1.1)
 has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
 
-is_spread = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
+// 3. BỘ LỌC LÁ CHẮN KHUNG GIỜ VÀNG (KILLZONES SHIELD)
+// Phiên Âu (London: 14:00 - 18:00 VN = 07:00 - 11:00 UTC)
+// Phiên Mỹ (New York: 19:30 - 23:00 VN = 12:30 - 16:00 UTC)
+in_london_kz  = not na(time(timeframe.period, "0700-1100:1234567", "UTC"))
+in_newyork_kz = not na(time(timeframe.period, "1230-1600:1234567", "UTC"))
+is_golden_kz  = in_london_kz or in_newyork_kz
+
+// Giờ giãn spread đêm muộn & rạng sáng
+is_spread     = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
+time_allowed  = not is_spread and (not filter_kz or is_golden_kz)
 
 // Độ dốc EMA 89 & Trạng thái Dải Rồng nhận diện Sideway vs Trend (CHỐNG BẪY BẮT ĐÁY)
 dragon_bearish  = (ema_high < ema_89) and (ema_close < ema_close[2])
@@ -419,32 +445,39 @@ ema89_slope = math.abs(ema_89 - nz(ema_89[8], ema_89)) / (8.0 * nz(atr_val, 1.0)
 is_sideway  = (ema89_slope < 0.085 or dragon_in_ema89) and not dragon_bearish and not dragon_bullish
 
 // 1. Tín hiệu theo Xu Hướng (Sonic R Chuẩn)
-trend_buy_trigger  = not is_sideway and (close > ema_89) and mtf_h1 and cross_up_ema and (low <= ema_high) and has_rejection_buy and not is_spread and has_room_buy
-trend_sell_trigger = not is_sideway and (close < ema_89) and not mtf_h1 and cross_dn_ema and (high >= ema_low) and has_rejection_sell and not is_spread and has_room_sell
+trend_buy_trigger  = not is_sideway and (close > ema_89) and mtf_h1 and cross_up_ema and (low <= ema_high) and has_rejection_buy and time_allowed and has_room_buy
+trend_sell_trigger = not is_sideway and (close < ema_89) and not mtf_h1 and cross_dn_ema and (high >= ema_low) and has_rejection_sell and time_allowed and has_room_sell
 
 // 2. Tín hiệu Ping-Pong khi Sideway (Đánh 2 đầu Cản/VAH/VAL về POC - CẤM NGẶT BẮT ĐÁY KHI RỒNG ĐANG DỐC XUỐNG)
 near_res = (not na(cur_res_price) and high >= cur_res_price - 2.5 and close <= cur_res_price) or (not na(cur_vah_val) and high >= cur_vah_val - 1.5 and close <= cur_vah_val and not is_above_vah)
 near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cur_sup_price) or (not na(cur_val_val) and low <= cur_val_val + 1.5 and close >= cur_val_val and not is_below_val)
 
-// Chốt chặn bảo vệ: Cấm tuyệt đối BUY bắt đáy khi nến nằm dưới Rồng hoặc Rồng dưới EMA 89!
-safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and not is_spread and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
-safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and not is_spread and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
+safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and time_allowed and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
+safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and time_allowed and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
 
 buy_trigger  = trend_buy_trigger or safe_ping_buy
 sell_trigger = trend_sell_trigger or safe_ping_sell
+
+// 4. PHÂN HẠNG TÍN HIỆU THÀNH KÈO A+ VÀ B
+bool is_buy_grade_a  = trend_buy_trigger and mtf_h1 and dragon_bullish and is_vol_surge and has_room_buy
+bool is_sell_grade_a = trend_sell_trigger and not mtf_h1 and dragon_bearish and is_vol_surge and has_room_sell
 
 var int last_side = 0
 var int last_bar  = 0
 valid_buy  = buy_trigger and (last_side != 1 or bar_index - last_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
 valid_sell = sell_trigger and (last_side != -1 or bar_index - last_bar > 8) and (barstate.isconfirmed or not barstate.isrealtime)
 
-var label lbl_sig_pos = na
+var label lbl_sig_pos    = na
+var line  line_be_draw   = na
+var line  line_tp1_draw  = na
+var line  line_sl_draw   = na
 
 if (valid_buy or valid_sell) and show_signals
     last_bar  := bar_index
     entry_val = close
     last_side := valid_buy ? 1 : -1
-    bool is_ping_mode = valid_buy ? ping_buy_trigger : ping_sell_trigger
+    bool is_ping_mode = valid_buy ? safe_ping_buy : safe_ping_sell
+    bool is_grade_a   = valid_buy ? is_buy_grade_a : is_sell_grade_a
     
     float sl_val  = na
     float tp_val  = na
@@ -500,60 +533,82 @@ if (valid_buy or valid_sell) and show_signals
             tp_val := entry_val - (sl_fixed_pts * rr_ratio)
             tp_tag := "(R:R)"
             
+    // 5. TÍNH MỐC BE KHÓA HÒA VỐN (+1.5R) VÀ VẼ ĐƯỜNG TRỰC QUAN
+    float sl_distance = math.abs(entry_val - sl_val)
+    float be_target   = valid_buy ? (entry_val + sl_distance * 1.5) : (entry_val - sl_distance * 1.5)
+    
+    if show_be_line
+        line.delete(line_sl_draw)
+        line.delete(line_be_draw)
+        line.delete(line_tp1_draw)
+        line_sl_draw  := line.new(bar_index, sl_val, bar_index + 16, sl_val, color=color.new(#f43f5e, 20), width=1, style=line.style_dashed)
+        line_be_draw  := line.new(bar_index, be_target, bar_index + 16, be_target, color=color.new(#38bdf8, 20), width=1, style=line.style_dotted)
+        line_tp1_draw := line.new(bar_index, tp_val, bar_index + 16, tp_val, color=color.new(#10b981, 20), width=1, style=line.style_dashed)
+        
     label.delete(lbl_sig_pos)
     
-    // Khoảng cách offset cao hơn để không bị các cây nến sau đâm xuyên qua nhãn
+    // Khoảng cách offset cao hơn để không bị nến đè nhãn
     float offset_y = math.max(nz(atr_val, 2.0) * 0.75, 2.0)
     
-    // Xác định lý do vào lệnh cụ thể & Phân tích chi tiết khi rê chuột (Tooltip)
+    // Tên phân hạng
+    string grade_name = is_grade_a ? "A+ [CHẤT LƯỢNG CAO]" : "B [HẠ 50% LOT - CHỐT NHANH]"
+    string action_str = valid_buy ? "▲ BUY " : "▼ SELL "
+    
     string trade_reason = ""
     string tip_details  = ""
     
     if is_ping_mode
         if valid_buy
-            trade_reason := "Chạm Hỗ Trợ/VAL • Rút chân bắt đáy (Về POC)"
-            tip_details  := "=== PHÂN TÍCH KÈO BUY PING-PONG ===\n• Cấu trúc: Thị trường Sideway (EMA 89 phẳng)\n• Vị trí: Giá test vùng Hỗ Trợ / VAL (" + str.tostring(cur_val_val, "#.#") + ")\n• Tín hiệu: Nến đảo chiều từ chối đáy\n• Mục tiêu: Dòng tiền hồi quy về trục POC " + str.tostring(cur_poc_val, "#.#")
+            trade_reason := "Chạm Hỗ Trợ/VAL • Nến 2 cây xác nhận (Về POC)"
+            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
         else
-            trade_reason := "Chạm Kháng Cự/VAH • Từ chối giá (Về POC)"
-            tip_details  := "=== PHÂN TÍCH KÈO SELL PING-PONG ===\n• Cấu trúc: Thị trường Sideway (EMA 89 phẳng)\n• Vị trí: Giá test vùng Kháng Cự / VAH (" + str.tostring(cur_vah_val, "#.#") + ")\n• Tín hiệu: Nến đảo chiều từ chối đỉnh\n• Mục tiêu: Dòng tiền hồi quy về trục POC " + str.tostring(cur_poc_val, "#.#")
+            trade_reason := "Chạm Kháng Cự/VAH • Nến 2 cây xác nhận (Về POC)"
+            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Mốc BE khóa lãi: " + str.tostring(be_target, "#.#") + "\n• Mục tiêu TP: POC " + str.tostring(cur_poc_val, "#.#")
     else
         if valid_buy
-            trade_reason := "Trên EMA 89 • Cắt Rồng Sonic • Thuận H1"
-            tip_details  := "=== PHÂN TÍCH KÈO BUY SONIC R ===\n• Cấu trúc: Xu hướng TĂNG (Nến trên EMA 89 Gold)\n• Đa khung MTF: Nến H1 đồng thuận tăng\n• Tín hiệu: Giá cắt lên đường sóng Rồng EMA 34\n• Khoảng trống: Đủ biên độ ăn R:R trước khi chạm cản"
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Trên EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
         else
-            trade_reason := "Dưới EMA 89 • Cắt Rồng Sonic • Thuận H1"
-            tip_details  := "=== PHÂN TÍCH KÈO SELL SONIC R ===\n• Cấu trúc: Xu hướng GIẢM (Nến dưới EMA 89 Gold)\n• Đa khung MTF: Nến H1 đồng thuận giảm\n• Tín hiệu: Giá cắt xuống đường sóng Rồng EMA 34\n• Khoảng trống: Đủ biên độ ăn R:R trước khi chạm hỗ trợ"
-    
-    // Định dạng nội dung nhãn: Loại bỏ hoàn toàn emoji hoạt hình, chuẩn thiết kế tài chính chuyên nghiệp
-    string action_tag = valid_buy ? "▲ BUY" : "▼ SELL"
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Mốc BE khóa lãi (+1.5R): " + str.tostring(be_target, "#.#") + "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            
+    // Định dạng nội dung nhãn
     string label_content = ""
     color  lbl_bg        = na
     color  lbl_text      = color.white
     
     if lbl_theme == "⚡ Tối Giản (1 Dòng)"
-        label_content := action_tag + " " + str.tostring(entry_val, "#.#") + "  |  TP: " + str.tostring(tp_val, "#.#") + "  |  SL: " + str.tostring(sl_val, "#.#")
-        lbl_bg   := valid_buy ? color.new(#064e3b, 10) : color.new(#881337, 10)
+        label_content := action_str + "[" + (is_grade_a ? "A+" : "B") + "] " + str.tostring(entry_val, "#.#") + " | TP1: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#")
+        lbl_bg   := valid_buy ? (is_grade_a ? color.new(#065f46, 10) : color.new(#0f172a, 10)) : (is_grade_a ? color.new(#9f1239, 10) : color.new(#0f172a, 10))
         lbl_text := valid_buy ? #34d399 : #fb7185
         
     else if lbl_theme == "🔥 Cổ Điển"
-        label_content := action_tag + " @ " + str.tostring(entry_val, "#.#") + "\nTP " + tp_tag + ": " + str.tostring(tp_val, "#.#") + "  |  SL: " + str.tostring(sl_val, "#.#") + "\nSetup: " + trade_reason
+        label_content := action_str + " @ " + str.tostring(entry_val, "#.#") + "\nTP: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#") + "\n" + grade_name
         lbl_bg   := valid_buy ? #059669 : #e11d48
         lbl_text := color.white
         
-    else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định chuẩn quỹ
-        label_content := action_tag + " @ " + str.tostring(entry_val, "#.#") + "  [" + (is_ping_mode ? "RANGE" : "TREND") + "]\nTP: " + str.tostring(tp_val, "#.#") + " " + tp_tag + "  |  SL: " + str.tostring(sl_val, "#.#") + "\nLý do: " + trade_reason
-        lbl_bg   := color.new(#0f172a, 10)
-        lbl_text := valid_buy ? #34d399 : #fb7185
+    else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định
+        label_content := action_str + grade_name + " @ " + str.tostring(entry_val, "#.#") + 
+                         "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag + 
+                         "\n• Mốc BE (Dời hòa vốn): " + str.tostring(be_target, "#.#") + " (+1.5R)" + 
+                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + 
+                         "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Đi 50% Volume")
+        lbl_bg   := is_grade_a ? (valid_buy ? color.new(#064e3b, 10) : color.new(#881337, 10)) : color.new(#0f172a, 10)
+        lbl_text := valid_buy ? (is_grade_a ? #4ade80 : #38bdf8) : (is_grade_a ? #f87171 : #fb7185)
         
     if valid_buy
         lbl_sig_pos := label.new(bar_index, low - offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_up, size=size.small, tooltip=tip_details)
     else
         lbl_sig_pos := label.new(bar_index, high + offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_down, size=size.small, tooltip=tip_details)
 
-    // Bắn thông báo tự động (Alert) về App Điện Thoại / Telegram / Webhook
-    string alert_msg = "🔥 [TNDUCK SYSTEM] " + action_tag + " - " + syminfo.ticker + " (Khung M" + timeframe.period + ")\n• Giá vào: " + str.tostring(entry_val, "#.#") + "\n• Chốt lời (TP " + tp_tag + "): " + str.tostring(tp_val, "#.#") + "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + "\n• Lý do: " + trade_reason
+    // Bắn thông báo tự động (Alert)
+    string alert_msg = "🔥 [TNDUCK PRO] " + action_str + grade_name + " - " + syminfo.ticker + 
+                       "\n• Giá vào: " + str.tostring(entry_val, "#.#") + 
+                       "\n• TP1: " + str.tostring(tp_val, "#.#") + 
+                       "\n• Mốc BE (+1.5R): " + str.tostring(be_target, "#.#") + 
+                       "\n• SL: " + str.tostring(sl_val, "#.#") + 
+                       "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume")
     alert(alert_msg, alert.freq_once_per_bar_close)
 
-// Cấu hình Alertconditions cho giao diện TradingView
 alertcondition(valid_buy, title="🟢 Báo Tín Hiệu MUA (BUY)", message="🟢 TNDUCK System: TÍN HIỆU MUA {{ticker}} tại giá {{close}}")
 alertcondition(valid_sell, title="🔴 Báo Tín Hiệu BÁN (SELL)", message="🔴 TNDUCK System: TÍN HIỆU BÁN {{ticker}} tại giá {{close}}")
