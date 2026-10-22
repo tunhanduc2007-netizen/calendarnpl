@@ -1,0 +1,19 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# Disable collaborative deploy preview drawer on all environments
+[context.deploy-preview.environment]
+  NETLIFY_DRAWER = "false"
+
+[context.production.environment]
+  NETLIFY_DRAWER = "false"
+
+[context.branch-deploy.environment]
+  NETLIFY_DRAWER = "false"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

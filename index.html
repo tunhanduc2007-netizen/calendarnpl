@@ -15,6 +15,64 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Netlify Drawer & Badge Eradicator -->
+  <style id="netlify-eradicator">
+    netlify-drawer,
+    #netlify-drawer,
+    .netlify-badge,
+    #netlify-badge,
+    [data-netlify-deploy-id],
+    [class*="netlify"],
+    [id*="netlify"],
+    iframe[src*="netlify"],
+    iframe[id*="netlify"],
+    iframe[title*="Netlify"],
+    a[href*="netlify.com"],
+    div:has(> a[href*="netlify.com"]),
+    div:has(> [class*="netlify"]),
+    [data-theme-switcher],
+    [data-netlify-feedback] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      position: absolute !important;
+      left: -9999px !important;
+      bottom: -9999px !important;
+      z-index: -99999 !important;
+      clip: rect(0,0,0,0) !important;
+      overflow: hidden !important;
+    }
+  </style>
+  <script>
+    (function killNetlify() {
+      const purge = () => {
+        try {
+          const selectors = [
+            'netlify-drawer', '#netlify-drawer', '.netlify-badge', '#netlify-badge',
+            '[data-netlify-deploy-id]', '[class*="netlify"]', '[id*="netlify"]',
+            'iframe[src*="netlify"]', 'iframe[title*="Netlify"]', 'a[href*="netlify.com"]'
+          ];
+          document.querySelectorAll(selectors.join(',')).forEach(el => el.remove());
+          document.querySelectorAll('div, a, button, section, span, p').forEach(el => {
+            if (el.children.length <= 4 && el.textContent && el.textContent.includes('Powered by Netlify')) {
+              el.remove();
+            }
+          });
+        } catch (e) {}
+      };
+      purge();
+      if (typeof MutationObserver !== 'undefined') {
+        new MutationObserver(purge).observe(document.documentElement, { childList: true, subtree: true });
+      }
+      window.addEventListener('DOMContentLoaded', purge);
+      window.addEventListener('load', purge);
+      setInterval(purge, 300);
+    })();
+  </script>
 </head>
 <body>
   <div class="app-container">
@@ -77,7 +135,19 @@
           <span>Ghi PnL</span>
         </button>
 
-        <!-- 4. Stats -->
+        <!-- 4. Arena: Mục Tiêu & Rank -->
+        <button class="nav-item" data-view="arena" title="Đấu Trường Mục Tiêu & Leo Rank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1h12v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+          </svg>
+          <span>Mục Tiêu</span>
+        </button>
+
+        <!-- 5. Stats -->
         <button class="nav-item" data-view="stats">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" x2="18" y1="20" y2="10"/>
@@ -87,8 +157,8 @@
           <span>Thống Kê</span>
         </button>
 
-        <!-- 5. Insights -->
-        <button class="nav-item" data-view="insights">
+        <!-- Desktop-Only Nav Items -->
+        <button class="nav-item desktop-only-nav" data-view="insights">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 16v-4"/>
@@ -97,19 +167,6 @@
           <span>Phân Tích</span>
         </button>
 
-        <!-- 6. Arena: Mục Tiêu & Rank -->
-        <button class="nav-item" data-view="arena" title="Đấu Trường Mục Tiêu & Leo Rank">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-            <path d="M4 22h16"/>
-            <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1h12v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"/>
-            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-          </svg>
-          <span>Mục Tiêu & Rank</span>
-        </button>
-
-        <!-- Desktop-Only Nav Items -->
         <button class="nav-item desktop-only-nav" data-view="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect width="7" height="9" x="3" y="3" rx="1"/>

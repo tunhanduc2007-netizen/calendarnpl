@@ -49,7 +49,39 @@ class AppController {
     // Render Initial View (Calendar) & Arena Quick Widget
     this.calendarEngine.render();
     this.renderArenaWidget();
+    this.purgeNetlifyElements();
     console.log('tnduck PnL Web App Initialized Cleanly!');
+  }
+
+  // ==================== NETLIFY ERADICATOR ====================
+  purgeNetlifyElements() {
+    const purge = () => {
+      try {
+        const selectors = [
+          'netlify-drawer', '#netlify-drawer', '.netlify-badge', '#netlify-badge',
+          '[data-netlify-deploy-id]', '[class*="netlify"]', '[id*="netlify"]',
+          'iframe[src*="netlify"]', 'iframe[title*="Netlify"]', 'a[href*="netlify.com"]'
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(el => el.remove());
+        document.querySelectorAll('div, a, button, section, span, p').forEach(el => {
+          if (el.children.length <= 4 && el.textContent && el.textContent.includes('Powered by Netlify')) {
+            el.remove();
+          }
+        });
+      } catch (e) {}
+    };
+
+    purge();
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver(purge);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    let count = 0;
+    const interval = setInterval(() => {
+      purge();
+      count++;
+      if (count > 25) clearInterval(interval);
+    }, 200);
   }
 
   // ==================== NAVIGATION CONTROLLER ====================
