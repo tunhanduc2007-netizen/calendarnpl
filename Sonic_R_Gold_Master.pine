@@ -390,23 +390,29 @@ has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
 
 is_spread = not na(time(timeframe.period, "2130-2330:1234567", "UTC"))
 
-// Độ dốc EMA 89 nhận diện Sideway vs Trend
+// Độ dốc EMA 89 & Trạng thái Dải Rồng nhận diện Sideway vs Trend (CHỐNG BẪY BẮT ĐÁY)
+dragon_bearish  = (ema_high < ema_89) and (ema_close < ema_close[2])
+dragon_bullish  = (ema_low > ema_89) and (ema_close > ema_close[2])
+dragon_in_ema89 = (ema_high >= ema_89) and (ema_low <= ema_89)
+
 ema89_slope = math.abs(ema_89 - nz(ema_89[8], ema_89)) / (8.0 * nz(atr_val, 1.0))
-is_sideway  = ema89_slope < 0.085
+// Chỉ được xem là Sideway khi dải Rồng lồng vào EMA 89 hoặc EMA 89 phẳng, và TUYỆT ĐỐI không trong nhịp rơi/tăng dốc
+is_sideway  = (ema89_slope < 0.085 or dragon_in_ema89) and not dragon_bearish and not dragon_bullish
 
 // 1. Tín hiệu theo Xu Hướng (Sonic R Chuẩn)
 trend_buy_trigger  = not is_sideway and (close > ema_89) and mtf_h1 and cross_up_ema and (low <= ema_high) and has_rejection_buy and not is_spread and has_room_buy
 trend_sell_trigger = not is_sideway and (close < ema_89) and not mtf_h1 and cross_dn_ema and (high >= ema_low) and has_rejection_sell and not is_spread and has_room_sell
 
-// 2. Tín hiệu Ping-Pong khi Sideway (Đánh 2 đầu Cản/VAH/VAL về POC - BẢO VỆ CHỐNG BẪY BREAKOUT)
+// 2. Tín hiệu Ping-Pong khi Sideway (Đánh 2 đầu Cản/VAH/VAL về POC - CẤM NGẶT BẮT ĐÁY KHI RỒNG ĐANG DỐC XUỐNG)
 near_res = (not na(cur_res_price) and high >= cur_res_price - 2.5 and close <= cur_res_price) or (not na(cur_vah_val) and high >= cur_vah_val - 1.5 and close <= cur_vah_val and not is_above_vah)
 near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cur_sup_price) or (not na(cur_val_val) and low <= cur_val_val + 1.5 and close >= cur_val_val and not is_below_val)
 
-ping_sell_trigger = allow_ping and is_sideway and near_res and has_rejection_sell and not is_spread and (na(cur_poc_val) or close > cur_poc_val + 2.0)
-ping_buy_trigger  = allow_ping and is_sideway and near_sup and has_rejection_buy and not is_spread and (na(cur_poc_val) or close < cur_poc_val - 2.0)
+// Chốt chặn bảo vệ: Cấm tuyệt đối BUY bắt đáy khi nến nằm dưới Rồng hoặc Rồng dưới EMA 89!
+safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and not is_spread and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
+safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and not is_spread and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
 
-buy_trigger  = trend_buy_trigger or ping_buy_trigger
-sell_trigger = trend_sell_trigger or ping_sell_trigger
+buy_trigger  = trend_buy_trigger or safe_ping_buy
+sell_trigger = trend_sell_trigger or safe_ping_sell
 
 var int last_side = 0
 var int last_bar  = 0
