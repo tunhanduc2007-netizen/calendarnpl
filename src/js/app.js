@@ -70,26 +70,7 @@ class AppController {
     navItems.forEach(item => {
       item.addEventListener('click', () => {
         const viewId = item.getAttribute('data-view');
-        if (!viewId) return;
-
-        // Switch active tab styling
-        navItems.forEach(btn => btn.classList.remove('active'));
-        item.classList.add('active');
-
-        // Switch visible view container
-        const allViews = document.querySelectorAll('.view-container');
-        allViews.forEach(v => v.classList.remove('active'));
-
-        const targetView = document.getElementById(`view-${viewId}`);
-        if (targetView) targetView.classList.add('active');
-
-        this.currentView = viewId;
-        if (viewTitleText && viewTitles[viewId]) {
-          viewTitleText.textContent = viewTitles[viewId];
-        }
-
-        // Render target view content
-        this.renderView(viewId);
+        this.switchView(viewId);
       });
     });
 
@@ -166,6 +147,43 @@ class AppController {
     }
   }
 
+  switchView(viewId) {
+    if (!viewId) return;
+    const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+    const viewTitleText = document.getElementById('page-title-text');
+
+    const viewTitles = {
+      calendar: 'Calendar',
+      dashboard: 'Dashboard',
+      stats: 'Stats',
+      journal: 'Trade Journal',
+      insights: 'Trading Insights',
+      diary: 'Trade Diary',
+      arena: 'Mục Tiêu & Leo Rank'
+    };
+
+    navItems.forEach(btn => {
+      if (btn.getAttribute('data-view') === viewId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const allViews = document.querySelectorAll('.view-container');
+    allViews.forEach(v => v.classList.remove('active'));
+
+    const targetView = document.getElementById(`view-${viewId}`);
+    if (targetView) targetView.classList.add('active');
+
+    this.currentView = viewId;
+    if (viewTitleText && viewTitles[viewId]) {
+      viewTitleText.textContent = viewTitles[viewId];
+    }
+
+    this.renderView(viewId);
+  }
+
   refreshCurrentView() {
     this.renderView(this.currentView);
     this.renderArenaWidget();
@@ -177,9 +195,10 @@ class AppController {
       container.innerHTML = this.arenaEngine.renderQuickWidget();
       const btnOpen = document.getElementById('btn-open-arena-view');
       if (btnOpen) {
-        btnOpen.addEventListener('click', () => {
-          const navArena = document.querySelector('.sidebar-nav .nav-item[data-view="arena"]');
-          if (navArena) navArena.click();
+        btnOpen.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.switchView('arena');
         });
       }
     }

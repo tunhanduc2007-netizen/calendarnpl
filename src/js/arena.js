@@ -432,8 +432,8 @@ export class ArenaEngine {
 
           <div class="arena-kpi-item card-target">
             <div class="kpi-tag">Mục Tiêu Ngày (Ăn Nhiêu Là Đủ?)</div>
-            <div class="kpi-value text-profit">+${curr(m.target2R)}</div>
-            <div class="kpi-desc">Cán mốc <strong>+2R (10 giá Vàng)</strong> là đạt chỉ tiêu ngày. Max target: +${curr(m.target3R)} (+3R).</div>
+            <div class="kpi-value text-profit">${curr(m.target2R)}</div>
+            <div class="kpi-desc">Cán mốc <strong>+2R (10 giá Vàng)</strong> là đạt chỉ tiêu ngày. Max target: ${curr(m.target3R)} (+3R).</div>
           </div>
 
           <div class="arena-kpi-item card-stop">
@@ -471,17 +471,17 @@ export class ArenaEngine {
               <div class="m-point p-1r">
                 <span class="m-dot">🟢</span>
                 <span class="m-label">Chặng 1 (+1R)</span>
-                <span class="m-val">+${curr(m.target1R)}</span>
+                <span class="m-val">${curr(m.target1R)}</span>
               </div>
               <div class="m-point p-target">
                 <span class="m-dot">⭐</span>
                 <span class="m-label">Đạt Chỉ Tiêu (+2R)</span>
-                <span class="m-val">+${curr(m.target2R)}</span>
+                <span class="m-val">${curr(m.target2R)}</span>
               </div>
               <div class="m-point p-perfect">
                 <span class="m-dot">👑</span>
                 <span class="m-label">Hoàn Hảo (+3R)</span>
-                <span class="m-val">+${curr(m.target3R)}</span>
+                <span class="m-val">${curr(m.target3R)}</span>
               </div>
             </div>
 
