@@ -258,12 +258,12 @@ sell_trigger = trend_sell_trigger or safe_ping_sell or c2c_bear_sweep
 
 var int last_sig_side = 0
 var int last_sig_bar  = 0
-valid_buy  = buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and in_date
-valid_sell = sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and in_date
+bool can_strat_buy  = buy_trigger and (last_sig_side != 1 or bar_index - last_sig_bar > 8) and in_date and strategy.position_size == 0
+bool can_strat_sell = sell_trigger and (last_sig_side != -1 or bar_index - last_sig_bar > 8) and in_date and strategy.position_size == 0
 
-// Vẽ mũi tên tín hiệu rõ ràng trên biểu đồ
-plotshape(valid_buy, title="Mũi Tên BUY", style=shape.labelup, location=location.belowbar, color=#10b981, text="BUY", textcolor=color.white, size=size.normal)
-plotshape(valid_sell, title="Mũi Tên SELL", style=shape.labeldown, location=location.abovebar, color=#f43f5e, text="SELL", textcolor=color.white, size=size.normal)
+// Vẽ mũi tên tín hiệu gọn gàng chuẩn LuxAlgo (Chỉ vẽ 1 lần khi khớp lệnh, không spam)
+plotshape(can_strat_buy, title="Mũi Tên BUY", style=shape.labelup, location=location.belowbar, color=#10b981, text="BUY", textcolor=color.white, size=size.small)
+plotshape(can_strat_sell, title="Mũi Tên SELL", style=shape.labeldown, location=location.abovebar, color=#f43f5e, text="SELL", textcolor=color.white, size=size.small)
 
 
 // ==============================================================================
@@ -275,7 +275,7 @@ var float strat_tp1_price   = na
 var float strat_tp2_price   = na
 var bool  strat_hit_tp1     = false
 
-if valid_buy and strategy.position_size == 0
+if can_strat_buy
     last_sig_side := 1
     last_sig_bar  := bar_index
     strat_entry_price := close
@@ -309,7 +309,7 @@ if valid_buy and strategy.position_size == 0
     strategy.entry("BUY_1", strategy.long, qty=1, comment="Buy TP1")
     strategy.entry("BUY_2", strategy.long, qty=1, comment="Buy Runner")
 
-else if valid_sell and strategy.position_size == 0
+else if can_strat_sell
     last_sig_side := -1
     last_sig_bar  := bar_index
     strat_entry_price := close

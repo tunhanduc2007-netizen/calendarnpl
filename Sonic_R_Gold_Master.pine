@@ -25,7 +25,7 @@ poc_step    = input.float(0.5, "Bước chia giá POC ($)", options=[0.25, 0.5, 
 
 grp_sig     = "=== 4. TÍN HIỆU VÀO LỆNH (MUA / BÁN) ==="
 show_signals= input.bool(true, "Hiển thị Tín Hiệu Mua / Bán", group=grp_sig, display=display.none)
-lbl_theme   = input.string("🏛️ Chuyên Nghiệp (Institutional Pro)", "Phong Cách Nhãn Tín Hiệu", options=["🏛️ Chuyên Nghiệp (Institutional Pro)", "⚡ Tối Giản (1 Dòng)", "🔥 Cổ Điển"], group=grp_sig, display=display.none)
+lbl_theme   = input.string("💎 LuxAlgo Pill Badge (Huy Hiệu Mini + Tooltip)", "Phong Cách Nhãn Tín Hiệu", options=["💎 LuxAlgo Pill Badge (Huy Hiệu Mini + Tooltip)", "⚡ Tinh Gọn Hiện Đại (3 Dòng)", "🏛️ Đầy Đủ Chi Tiết (7 Dòng)", "🔥 Cổ Điển"], group=grp_sig, display=display.none)
 tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig, display=display.none)
 allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig, display=display.none)
 require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến (Chống Rút Râu Ảo)", group=grp_sig, display=display.none)
@@ -407,10 +407,10 @@ if show_va_box and show_va and not na(cur_vah_val) and not na(cur_val_val)
     box.delete(box_va)
     int start_b = na(cur_poc_bar) ? bar_index - 10 : cur_poc_bar
     box_va := box.new(start_b, cur_vah_val, bar_index + 21, cur_val_val, 
-                      border_color=color.new(#a855f7, 80), 
+                      border_color=color.new(#a855f7, 85), 
                       border_width=1, 
                       border_style=line.style_dotted, 
-                      bgcolor=color.new(#8b5cf6, 94))
+                      bgcolor=color.new(#8b5cf6, 97))
 else
     box.delete(box_va)
 
@@ -497,32 +497,52 @@ if show_c2c and not na(c2c_h) and not na(c2c_l)
     int s_bar = na(c2c_start_bar) ? bar_index - 20 : c2c_start_bar
     if show_c2c_box
         box.delete(c2c_box)
-        c2c_box := box.new(s_bar, c2c_h, bar_index + 18, c2c_l,
-                           border_color=color.new(#8b5cf6, 60),
+        c2c_box := box.new(s_bar, c2c_h, bar_index + 20, c2c_l,
+                           border_color=color.new(#8b5cf6, 75),
                            border_width=1,
-                           border_style=line.style_dashed,
-                           bgcolor=color.new(#6366f1, 96))
+                           border_style=line.style_dotted,
+                           bgcolor=color.new(#6366f1, 97))
                            
     if show_c2c_mid and not na(c2c_mid)
         line.delete(c2c_line_mid)
         label.delete(c2c_lbl_mid)
-        c2c_line_mid := line.new(s_bar, c2c_mid, bar_index + 18, c2c_mid, color=color.new(#a855f7, 30), width=1, style=line.style_dotted)
-        c2c_lbl_mid  := label.new(bar_index + 18, c2c_mid, "⚖️ C2C 50% MID: " + str.tostring(c2c_mid, "#.##"), color=color.new(#a855f7, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+        c2c_line_mid := line.new(s_bar, c2c_mid, bar_index + 20, c2c_mid, color=color.new(#a855f7, 40), width=1, style=line.style_dotted)
+        c2c_lbl_mid  := label.new(bar_index + 20, c2c_mid, "⚖️ C2C 50% MID: " + str.tostring(c2c_mid, "#.##"), color=color.new(#a855f7, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+
+    // Chống đè nhãn: Tự động gộp với Đỉnh / Đáy Ngày nếu cách nhau <= 2.0 giá
+    bool merge_hi = show_hl_day and not na(day_high_price) and math.abs(c2c_h - day_high_price) <= 2.0
+    bool merge_lo = show_hl_day and not na(day_low_price) and math.abs(c2c_l - day_low_price) <= 2.0
 
     label.delete(c2c_lbl_top)
     label.delete(c2c_lbl_bot)
-    c2c_lbl_top := label.new(bar_index + 18, c2c_h, "👑 C2C H4 HIGH: " + str.tostring(c2c_h, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
-    c2c_lbl_bot := label.new(bar_index + 18, c2c_l, "🛡️ C2C H4 LOW: " + str.tostring(c2c_l, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
+    
+    if merge_hi
+        line.delete(line_d_hi)
+        label.delete(lbl_d_hi)
+        line_d_hi := na
+        lbl_d_hi  := na
+        c2c_lbl_top := label.new(bar_index + 20, c2c_h, "👑 C2C H4 & ĐỈNH NGÀY: " + str.tostring(c2c_h, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+    else
+        c2c_lbl_top := label.new(bar_index + 20, c2c_h, "👑 C2C H4 HIGH: " + str.tostring(c2c_h, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
+
+    if merge_lo
+        line.delete(line_d_lo)
+        label.delete(lbl_d_lo)
+        line_d_lo := na
+        lbl_d_lo  := na
+        c2c_lbl_bot := label.new(bar_index + 20, c2c_l, "🛡️ C2C H4 & ĐÁY NGÀY: " + str.tostring(c2c_l, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+    else
+        c2c_lbl_bot := label.new(bar_index + 20, c2c_l, "🛡️ C2C H4 LOW: " + str.tostring(c2c_l, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
 
 if show_c2c and not na(c2c_box)
-    box.set_right(c2c_box, bar_index + 18)
+    box.set_right(c2c_box, bar_index + 20)
     if not na(c2c_line_mid)
-        line.set_x2(c2c_line_mid, bar_index + 18)
-        label.set_x(c2c_lbl_mid, bar_index + 18)
+        line.set_x2(c2c_line_mid, bar_index + 20)
+        label.set_x(c2c_lbl_mid, bar_index + 20)
     if not na(c2c_lbl_top)
-        label.set_x(c2c_lbl_top, bar_index + 18)
+        label.set_x(c2c_lbl_top, bar_index + 20)
     if not na(c2c_lbl_bot)
-        label.set_x(c2c_lbl_bot, bar_index + 18)
+        label.set_x(c2c_lbl_bot, bar_index + 20)
 
 
 // ==============================================================================
@@ -707,12 +727,15 @@ if (valid_buy or valid_sell) and show_signals
         
     label.delete(lbl_sig_pos)
     
-    // Khoảng cách offset cao hơn để không bị nến đè nhãn
-    float offset_y = math.max(nz(atr_val, 2.0) * 0.75, 2.0)
+    bool is_pill = lbl_theme == "💎 LuxAlgo Pill Badge (Huy Hiệu Mini + Tooltip)"
+    
+    // Khoảng cách offset: Pill Badge siêu gọn nên offset sát nến hơn, tránh bị đụng đỉnh đáy chart
+    float offset_y = is_pill ? math.max(nz(atr_val, 2.0) * 0.45, 1.2) : math.max(nz(atr_val, 2.0) * 0.75, 2.0)
     
     // Tên phân hạng
     bool is_c2c_conf = valid_buy ? (c2c_bull_sweep or c2c_bull_sweep[1] or c2c_bull_sweep[2]) : (c2c_bear_sweep or c2c_bear_sweep[1] or c2c_bear_sweep[2])
     string grade_name = is_c2c_conf ? "A++ [SONIC R & C2C SWEEP]" : (is_grade_a ? "A+ [CHẤT LƯỢNG CAO]" : "B [HẠ 50% LOT - CHỐT NHANH]")
+    string badge_grade = is_c2c_conf ? "A++" : (is_grade_a ? "A+" : "B")
     string action_str = valid_buy ? "▲ BUY " : "▼ SELL "
     
     string trade_reason = ""
@@ -744,14 +767,31 @@ if (valid_buy or valid_sell) and show_signals
         else
             trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Đè Gãy Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
             tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.##") + " " + tp_tag
-            
+
+    // Chuỗi tooltip đầy đủ chuẩn chuyên nghiệp (Hover xem tức thì không che khuất nến)
+    string full_tip = "💎 [CHI TIẾT LỆNH " + action_str + badge_grade + "]" +
+                      "\n• Điểm Vào (Entry): " + str.tostring(entry_val, "#.##") + 
+                      "\n• Lý do vào lệnh: " + trade_reason + 
+                      "\n• Chốt lời (TP1): " + str.tostring(tp_val, "#.##") + " " + tp_tag + 
+                      "\n• Dời Hòa Vốn (BE): Kéo SL về " + str.tostring(be_target, "#.##") + " khi chạm TP1" + 
+                      "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.##") + " (Rủi ro: " + str.tostring(sl_dist, "#.##") + " giá)" + 
+                      "\n• Quản trị vốn: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume - Chốt nhanh") +
+                      "\n───────────────────────────────\n" + tip_details
+
     // Định dạng nội dung nhãn
     string label_content = ""
     color  lbl_bg        = na
     color  lbl_text      = color.white
     
-    if lbl_theme == "⚡ Tối Giản (1 Dòng)"
-        label_content := action_str + "[" + (is_grade_a ? "A+" : "B") + "] Entry: " + str.tostring(entry_val, "#.##") + " | " + trade_reason + " | TP1: " + str.tostring(tp_val, "#.##") + " | SL: " + str.tostring(sl_val, "#.##")
+    if lbl_theme == "💎 LuxAlgo Pill Badge (Huy Hiệu Mini + Tooltip)"
+        label_content := action_str + badge_grade + " @" + str.tostring(entry_val, "#.##")
+        lbl_bg   := valid_buy ? (is_grade_a ? color.new(#065f46, 15) : color.new(#064e3b, 25)) : (is_grade_a ? color.new(#9f1239, 15) : color.new(#881337, 25))
+        lbl_text := valid_buy ? #34d399 : #fb7185
+        
+    else if lbl_theme == "⚡ Tinh Gọn Hiện Đại (3 Dòng)"
+        label_content := action_str + "[" + badge_grade + "] @" + str.tostring(entry_val, "#.##") +
+                         "\n• TP1: " + str.tostring(tp_val, "#.##") + " | SL: " + str.tostring(sl_val, "#.##") + 
+                         "\n• BE: " + str.tostring(be_target, "#.##") + " | " + (is_grade_a ? "Full Size" : "Hạ 50% Lot")
         lbl_bg   := valid_buy ? (is_grade_a ? color.new(#065f46, 10) : color.new(#0f172a, 10)) : (is_grade_a ? color.new(#9f1239, 10) : color.new(#0f172a, 10))
         lbl_text := valid_buy ? #34d399 : #fb7185
         
@@ -763,7 +803,7 @@ if (valid_buy or valid_sell) and show_signals
         lbl_bg   := valid_buy ? #059669 : #e11d48
         lbl_text := color.white
         
-    else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định
+    else // "🏛️ Đầy Đủ Chi Tiết (7 Dòng)"
         label_content := action_str + grade_name + 
                          "\n• Điểm Vào (Entry): " + str.tostring(entry_val, "#.##") + 
                          "\n• Lý do vào lệnh: " + trade_reason + 
@@ -775,9 +815,9 @@ if (valid_buy or valid_sell) and show_signals
         lbl_text := valid_buy ? (is_grade_a ? #4ade80 : #38bdf8) : (is_grade_a ? #f87171 : #fb7185)
         
     if valid_buy
-        lbl_sig_pos := label.new(bar_index, low - offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_up, size=size.small, tooltip=tip_details)
+        lbl_sig_pos := label.new(bar_index, low - offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_up, size=size.small, tooltip=full_tip)
     else
-        lbl_sig_pos := label.new(bar_index, high + offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_down, size=size.small, tooltip=tip_details)
+        lbl_sig_pos := label.new(bar_index, high + offset_y, label_content, color=lbl_bg, textcolor=lbl_text, style=label.style_label_down, size=size.small, tooltip=full_tip)
 
     // Bắn thông báo tự động (Alert)
     string alert_msg = "🔥 [TNDUCK PRO] " + action_str + grade_name + " - " + syminfo.ticker + 
