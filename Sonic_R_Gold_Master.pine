@@ -36,6 +36,13 @@ sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Tối Đa (Giá Vàng $)", minv
 min_rr_ratio= input.float(1.5, "Tỷ lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig, display=display.none)
 rr_ratio    = input.float(2.0, "Tỷ lệ Ăn Lời R:R (Nếu chọn R:R cố định)", minval=1.0, step=0.5, group=grp_sig, display=display.none)
 
+grp_c2c      = "=== 5. C2C - CANDLE TO CANDLE / CRT (LÝ THUYẾT BIÊN ĐỘ NẾN) ==="
+show_c2c     = input.bool(true, "Bật Hệ Thống C2C (Candle Range Theory)", group=grp_c2c, display=display.none)
+c2c_tf       = input.timeframe("240", "Khung Nến Tham Chiếu C2C (Mặc định H4)", group=grp_c2c, display=display.none)
+show_c2c_box = input.bool(true, "Vẽ Khung Hộp Biên Độ Nến C2C (H4)", group=grp_c2c, display=display.none)
+show_c2c_mid = input.bool(true, "Vẽ Đường 50% Equilibrium (TP1)", group=grp_c2c, display=display.none)
+c2c_signals  = input.bool(true, "Bắn Tín Hiệu Quét Râu C2C (Sweep Reversal)", group=grp_c2c, display=display.none)
+
 // Cảnh báo nếu mở trên khung thời gian không phù hợp (Chỉ báo tối ưu cho M1 - M15)
 bool is_htf_invalid = (timeframe.isintraday and timeframe.multiplier >= 60) or timeframe.isdaily or timeframe.isweekly
 var table tbl_warn = table.new(position.top_center, 1, 1)
@@ -458,6 +465,79 @@ if show_va and not na(line_val)
 
 
 // ==============================================================================
+// 4B. C2C - CANDLE TO CANDLE / CRT (LÝ THUYẾT BIÊN ĐỘ NẾN ĐA KHUNG)
+// ==============================================================================
+// Lấy dữ liệu nến trước của khung tham chiếu (Mặc định H4 = 240)
+c2c_h = request.security(syminfo.tickerid, c2c_tf, high[1], barmerge.gaps_off, barmerge.lookahead_off)
+c2c_l = request.security(syminfo.tickerid, c2c_tf, low[1], barmerge.gaps_off, barmerge.lookahead_off)
+c2c_c = request.security(syminfo.tickerid, c2c_tf, close[1], barmerge.gaps_off, barmerge.lookahead_off)
+c2c_mid = not na(c2c_h) and not na(c2c_l) ? (c2c_h + c2c_l) * 0.5 : na
+
+bool is_new_c2c = timeframe.change(c2c_tf)
+var int c2c_start_bar = na
+if is_new_c2c
+    c2c_start_bar := bar_index
+
+// Nhận diện Quét Râu C2C (Liquidity Sweep):
+// 1. Bullish C2C: Nến M5 thọc râu đâm thủng Đáy nến H4 trước, nhưng rút chân đóng nến vượt ngược lên trên
+bool c2c_bull_sweep = show_c2c and not na(c2c_l) and low < c2c_l and close > c2c_l and (close > open)
+// 2. Bearish C2C: Nến M5 thọc râu vượt Đỉnh nến H4 trước, nhưng rút râu đóng nến tụt ngược xuống dưới
+bool c2c_bear_sweep = show_c2c and not na(c2c_h) and high > c2c_h and close < c2c_h and (close < open)
+
+// Vẽ Khung Hộp Biên Độ C2C và Đường 50% Equilibrium
+var box   c2c_box      = na
+var line  c2c_line_mid = na
+var label c2c_lbl_top  = na
+var label c2c_lbl_mid  = na
+var label c2c_lbl_bot  = na
+
+if show_c2c and not na(c2c_h) and not na(c2c_l)
+    int s_bar = na(c2c_start_bar) ? bar_index - 20 : c2c_start_bar
+    if show_c2c_box
+        box.delete(c2c_box)
+        c2c_box := box.new(s_bar, c2c_h, bar_index + 18, c2c_l,
+                           border_color=color.new(#8b5cf6, 60),
+                           border_width=1,
+                           border_style=line.style_dashed,
+                           bgcolor=color.new(#6366f1, 96))
+                           
+    if show_c2c_mid and not na(c2c_mid)
+        line.delete(c2c_line_mid)
+        label.delete(c2c_lbl_mid)
+        c2c_line_mid := line.new(s_bar, c2c_mid, bar_index + 18, c2c_mid, color=color.new(#a855f7, 30), width=1, style=line.style_dotted)
+        c2c_lbl_mid  := label.new(bar_index + 18, c2c_mid, "⚖️ C2C 50% MID: " + str.tostring(c2c_mid, "#.##"), color=color.new(#a855f7, 100), textcolor=#c084fc, style=label.style_label_left, size=size.small)
+
+    label.delete(c2c_lbl_top)
+    label.delete(c2c_lbl_bot)
+    c2c_lbl_top := label.new(bar_index + 18, c2c_h, "👑 C2C H4 HIGH: " + str.tostring(c2c_h, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
+    c2c_lbl_bot := label.new(bar_index + 18, c2c_l, "🛡️ C2C H4 LOW: " + str.tostring(c2c_l, "#.##"), color=color.new(#8b5cf6, 100), textcolor=#a78bfa, style=label.style_label_left, size=size.small)
+
+if show_c2c and not na(c2c_box)
+    box.set_right(c2c_box, bar_index + 18)
+    if not na(c2c_line_mid)
+        line.set_x2(c2c_line_mid, bar_index + 18)
+        label.set_x(c2c_lbl_mid, bar_index + 18)
+    if not na(c2c_lbl_top)
+        label.set_x(c2c_lbl_top, bar_index + 18)
+    if not na(c2c_lbl_bot)
+        label.set_x(c2c_lbl_bot, bar_index + 18)
+
+// Bắn Nhãn Tín Hiệu C2C Sweep Riêng Biệt (Màu Tím Neon Đặc Trưng)
+if c2c_signals and (c2c_bull_sweep or c2c_bear_sweep) and (barstate.isconfirmed or not barstate.isrealtime)
+    float c2c_offset = math.max(nz(ta.atr(14), 2.0) * 1.0, 2.5)
+    if c2c_bull_sweep
+        string tip_c2c_b = "=== KÈO C2C / CRT BULLISH SWEEP ===\n• Quét sạch đáy nến H4 trước (" + str.tostring(c2c_l, "#.#") + ")\n• Đóng nến bật ngược vào trong biên độ\n• Mục tiêu TP1: 50% Mid (" + str.tostring(c2c_mid, "#.#") + ")\n• Mục tiêu TP2: H4 High (" + str.tostring(c2c_h, "#.#") + ")"
+        label.new(bar_index, low - c2c_offset, 
+                  "⚡ C2C BUY [H4 SWEEP]\n• TP1 (50%): " + str.tostring(c2c_mid, "#.#") + "\n• TP2 (High): " + str.tostring(c2c_h, "#.#"), 
+                  color=color.new(#4c1d95, 10), textcolor=#c084fc, style=label.style_label_up, size=size.small, tooltip=tip_c2c_b)
+    else
+        string tip_c2c_s = "=== KÈO C2C / CRT BEARISH SWEEP ===\n• Quét sạch đỉnh nến H4 trước (" + str.tostring(c2c_h, "#.#") + ")\n• Đóng nến tụt ngược vào trong biên độ\n• Mục tiêu TP1: 50% Mid (" + str.tostring(c2c_mid, "#.#") + ")\n• Mục tiêu TP2: H4 Low (" + str.tostring(c2c_l, "#.#") + ")"
+        label.new(bar_index, high + c2c_offset, 
+                  "⚡ C2C SELL [H4 SWEEP]\n• TP1 (50%): " + str.tostring(c2c_mid, "#.#") + "\n• TP2 (Low): " + str.tostring(c2c_l, "#.#"), 
+                  color=color.new(#4c1d95, 10), textcolor=#f472b6, style=label.style_label_down, size=size.small, tooltip=tip_c2c_s)
+
+
+// ==============================================================================
 // 5. THUẬT TOÁN KÍCH HOẠT TÍN HIỆU (KẾT HỢP TREND SONIC R & PING-PONG SIDEWAY)
 // ==============================================================================
 h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off)
@@ -636,7 +716,8 @@ if (valid_buy or valid_sell) and show_signals
     float offset_y = math.max(nz(atr_val, 2.0) * 0.75, 2.0)
     
     // Tên phân hạng
-    string grade_name = is_grade_a ? "A+ [CHẤT LƯỢNG CAO]" : "B [HẠ 50% LOT - CHỐT NHANH]"
+    bool is_c2c_conf = valid_buy ? (c2c_bull_sweep or c2c_bull_sweep[1] or c2c_bull_sweep[2]) : (c2c_bear_sweep or c2c_bear_sweep[1] or c2c_bear_sweep[2])
+    string grade_name = is_c2c_conf ? "A++ [SONIC R & C2C SWEEP]" : (is_grade_a ? "A+ [CHẤT LƯỢNG CAO]" : "B [HẠ 50% LOT - CHỐT NHANH]")
     string action_str = valid_buy ? "▲ BUY " : "▼ SELL "
     
     string trade_reason = ""

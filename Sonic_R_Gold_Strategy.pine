@@ -31,6 +31,10 @@ sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Cơ Bản (Giá Vàng $)", minv
 min_rr_ratio= input.float(1.5, "Tỷ Lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig)
 rr_ratio    = input.float(2.0, "Tỷ Lệ Ăn Lời R:R Chuẩn", minval=1.0, step=0.5, group=grp_sig)
 
+grp_c2c      = "=== 6. C2C - CANDLE TO CANDLE / CRT ==="
+show_c2c     = input.bool(true, "Bật Hệ Thống C2C (Candle Range Theory)", group=grp_c2c)
+c2c_tf       = input.timeframe("240", "Khung Nến Tham Chiếu C2C (H4)", group=grp_c2c)
+
 
 // ==============================================================================
 // 2. DẢI RỒNG SONIC R & EMA 89
@@ -228,8 +232,16 @@ near_sup = (not na(cur_sup_price) and low <= cur_sup_price + 2.5 and close >= cu
 safe_ping_buy  = allow_ping and is_sideway and near_sup and has_rejection_buy and time_allowed and (na(cur_poc_val) or close < cur_poc_val - 2.0) and not dragon_bearish and close >= ema_low
 safe_ping_sell = allow_ping and is_sideway and near_res and has_rejection_sell and time_allowed and (na(cur_poc_val) or close > cur_poc_val + 2.0) and not dragon_bullish and close <= ema_high
 
-buy_trigger  = trend_buy_trigger or safe_ping_buy
-sell_trigger = trend_sell_trigger or safe_ping_sell
+// C2C (Candle-to-Candle / CRT)
+c2c_h = request.security(syminfo.tickerid, c2c_tf, high[1], barmerge.gaps_off, barmerge.lookahead_off)
+c2c_l = request.security(syminfo.tickerid, c2c_tf, low[1], barmerge.gaps_off, barmerge.lookahead_off)
+c2c_mid = not na(c2c_h) and not na(c2c_l) ? (c2c_h + c2c_l) * 0.5 : na
+
+bool c2c_bull_sweep = show_c2c and not na(c2c_l) and low < c2c_l and close > c2c_l and (close > open)
+bool c2c_bear_sweep = show_c2c and not na(c2c_h) and high > c2c_h and close < c2c_h and (close < open)
+
+buy_trigger  = trend_buy_trigger or safe_ping_buy or c2c_bull_sweep
+sell_trigger = trend_sell_trigger or safe_ping_sell or c2c_bear_sweep
 
 var int last_sig_side = 0
 var int last_sig_bar  = 0
