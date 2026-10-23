@@ -720,27 +720,30 @@ if (valid_buy or valid_sell) and show_signals
     
     bool is_pure_c2c = valid_buy ? (not trend_buy_trigger and not safe_ping_buy and c2c_bull_sweep) : (not trend_sell_trigger and not safe_ping_sell and c2c_bear_sweep)
     
-    if is_pure_c2c
+    if is_c2c_conf and not is_pure_c2c and not is_ping_mode
+        trade_reason := valid_buy ? "💎 Kèo A++ Hội Tụ Kép: Sonic R Thuận Trend + C2C H4 Sweep" : "💎 Kèo A++ Hội Tụ Kép: Sonic R Thuận Trend + C2C H4 Sweep"
+        tip_details  := "=== KÈO HỘI TỤ KÉP A++ (SONIC R + C2C SWEEP) ===\n• Xu hướng: Thuận Trend Sonic R đa khung MTF H1\n• Thanh khoản: Vừa quét râu đỉnh/đáy nến H4 (C2C Sweep)\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi chạm TP1\n• TP1 (50% Mid): " + str.tostring(c2c_mid, "#.##") + "\n• TP2 (Đỉnh/Đáy H4): " + str.tostring(valid_buy ? c2c_h : c2c_l, "#.##")
+    else if is_pure_c2c
         if valid_buy
-            trade_reason := "⚡ Quét Râu Đáy H4 C2C Sweep • Đóng nến bật ngược"
-            tip_details  := "=== KÈO C2C / CRT BULLISH SWEEP (HẠNG A++) ===\n• Quét sạch đáy nến H4 trước (" + str.tostring(c2c_l, "#.#") + ")\n• Bộ lọc chống dao rơi: Nến đóng trên dải Rồng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := "⚡ Quét Râu Đáy H4 C2C Sweep • Đóng nến bật ngược trên Rồng"
+            tip_details  := "=== KÈO C2C / CRT BULLISH SWEEP (HẠNG A++) ===\n• Quét sạch đáy nến H4 trước (" + str.tostring(c2c_l, "#.#") + ")\n• Bộ lọc chống dao rơi: Nến đóng trên dải Rồng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.##") + " " + tp_tag
         else
-            trade_reason := "⚡ Quét Râu Đỉnh H4 C2C Sweep • Đóng nến tụt ngược"
-            tip_details  := "=== KÈO C2C / CRT BEARISH SWEEP (HẠNG A++) ===\n• Quét sạch đỉnh nến H4 trước (" + str.tostring(c2c_h, "#.#") + ")\n• Bộ lọc chống dao rơi: Nến đóng dưới dải Rồng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := "⚡ Quét Râu Đỉnh H4 C2C Sweep • Đóng nến tụt ngược dưới Rồng"
+            tip_details  := "=== KÈO C2C / CRT BEARISH SWEEP (HẠNG A++) ===\n• Quét sạch đỉnh nến H4 trước (" + str.tostring(c2c_h, "#.#") + ")\n• Bộ lọc chống dao rơi: Nến đóng dưới dải Rồng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.##") + " " + tp_tag
     else if is_ping_mode
         if valid_buy
-            trade_reason := "Chạm Hỗ Trợ/VAL • Nến 2 cây xác nhận (Về POC)"
-            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := "🛡️ Test Hỗ Trợ/VAL Sideway • Nến 2 cây rút chân (Về POC)"
+            tip_details  := "=== KÈO BUY PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAL " + str.tostring(cur_val_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.##") + " " + tp_tag
         else
-            trade_reason := "Chạm Kháng Cự/VAH • Nến 2 cây xác nhận (Về POC)"
-            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := "👑 Test Kháng Cự/VAH Sideway • Nến 2 cây từ chối (Về POC)"
+            tip_details  := "=== KÈO SELL PING-PONG (HẠNG B) ===\n• Phân loại: Kèo Sideway (Đi 50% Volume)\n• Vị trí: Test VAH " + str.tostring(cur_vah_val, "#.#") + "\n• Xác nhận: 2-bar confirmation\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi chạm TP1\n• Mục tiêu TP1: " + str.tostring(tp_val, "#.##") + " " + tp_tag
     else
         if valid_buy
-            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Trên EMA 89 • Sóng Rồng Sonic • Thuận H1"
-            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Bứt Phá Trên EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO BUY XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng TĂNG vững chắc\n• Đa khung MTF: H1 đồng thuận tăng\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.##") + " " + tp_tag
         else
-            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
-            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.#") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag
+            trade_reason := (is_grade_a ? "🌟 Kèo A+ • " : "") + "Đè Gãy Dưới EMA 89 • Sóng Rồng Sonic • Thuận H1"
+            tip_details  := "=== KÈO SELL XU HƯỚNG (" + (is_grade_a ? "HẠNG A+ FULL SIZE" : "HẠNG B") + ") ===\n• Cấu trúc: Xu hướng GIẢM vững chắc\n• Đa khung MTF: H1 đồng thuận giảm\n• Dời BE: Kéo SL về Entry " + str.tostring(be_target, "#.##") + " khi cắn TP1\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.##") + " " + tp_tag
             
     // Định dạng nội dung nhãn
     string label_content = ""
@@ -748,21 +751,26 @@ if (valid_buy or valid_sell) and show_signals
     color  lbl_text      = color.white
     
     if lbl_theme == "⚡ Tối Giản (1 Dòng)"
-        label_content := action_str + "[" + (is_grade_a ? "A+" : "B") + "] " + str.tostring(entry_val, "#.#") + " | TP1: " + str.tostring(tp_val, "#.#") + " | BE: " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#")
+        label_content := action_str + "[" + (is_grade_a ? "A+" : "B") + "] Entry: " + str.tostring(entry_val, "#.##") + " | " + trade_reason + " | TP1: " + str.tostring(tp_val, "#.##") + " | SL: " + str.tostring(sl_val, "#.##")
         lbl_bg   := valid_buy ? (is_grade_a ? color.new(#065f46, 10) : color.new(#0f172a, 10)) : (is_grade_a ? color.new(#9f1239, 10) : color.new(#0f172a, 10))
         lbl_text := valid_buy ? #34d399 : #fb7185
         
     else if lbl_theme == "🔥 Cổ Điển"
-        label_content := action_str + " @ " + str.tostring(entry_val, "#.#") + "\nTP1: " + str.tostring(tp_val, "#.#") + " | BE @ " + str.tostring(be_target, "#.#") + " | SL: " + str.tostring(sl_val, "#.#") + "\n" + grade_name
+        label_content := action_str + grade_name + 
+                         "\n• Điểm Vào (Entry): " + str.tostring(entry_val, "#.##") + 
+                         "\n• Lý do vào lệnh: " + trade_reason + 
+                         "\n• TP1: " + str.tostring(tp_val, "#.##") + " | SL: " + str.tostring(sl_val, "#.##") + " | BE: " + str.tostring(be_target, "#.##")
         lbl_bg   := valid_buy ? #059669 : #e11d48
         lbl_text := color.white
         
     else // "🏛️ Chuyên Nghiệp (Institutional Pro)" - Mặc định
-        label_content := action_str + grade_name + " @ " + str.tostring(entry_val, "#.#") + 
-                         "\n• TP1 (Chốt 50%): " + str.tostring(tp_val, "#.#") + " " + tp_tag + 
-                         "\n• Dời Hòa Vốn (BE): Kéo SL về " + str.tostring(be_target, "#.#") + " khi chạm TP1" + 
-                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.#") + " (Rủi ro: " + str.tostring(sl_dist, "#.#") + " giá)" + 
-                         "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Đi 50% Volume")
+        label_content := action_str + grade_name + 
+                         "\n• Điểm Vào (Entry): " + str.tostring(entry_val, "#.##") + 
+                         "\n• Lý do vào lệnh: " + trade_reason + 
+                         "\n• Chốt lời (TP1): " + str.tostring(tp_val, "#.##") + " " + tp_tag + 
+                         "\n• Dời Hòa Vốn (BE): Kéo SL về " + str.tostring(be_target, "#.##") + " khi chạm TP1" + 
+                         "\n• Cắt lỗ (SL): " + str.tostring(sl_val, "#.##") + " (Rủi ro: " + str.tostring(sl_dist, "#.##") + " giá)" + 
+                         "\n• Quản trị vốn: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume - Chốt nhanh")
         lbl_bg   := is_grade_a ? (valid_buy ? color.new(#064e3b, 10) : color.new(#881337, 10)) : color.new(#0f172a, 10)
         lbl_text := valid_buy ? (is_grade_a ? #4ade80 : #38bdf8) : (is_grade_a ? #f87171 : #fb7185)
         
@@ -773,11 +781,12 @@ if (valid_buy or valid_sell) and show_signals
 
     // Bắn thông báo tự động (Alert)
     string alert_msg = "🔥 [TNDUCK PRO] " + action_str + grade_name + " - " + syminfo.ticker + 
-                       "\n• Giá vào: " + str.tostring(entry_val, "#.#") + 
-                       "\n• TP1: " + str.tostring(tp_val, "#.#") + 
-                       "\n• Mốc BE (Hòa vốn): " + str.tostring(be_target, "#.#") + 
-                       "\n• SL: " + str.tostring(sl_val, "#.#") + 
-                       "\n• Kế hoạch: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume")
+                       "\n• Điểm Vào (Entry): " + str.tostring(entry_val, "#.##") + 
+                       "\n• Lý do: " + trade_reason + 
+                       "\n• TP1: " + str.tostring(tp_val, "#.##") + " " + tp_tag + 
+                       "\n• Mốc BE (Hòa vốn): " + str.tostring(be_target, "#.##") + 
+                       "\n• SL: " + str.tostring(sl_val, "#.##") + 
+                       "\n• Quản trị vốn: " + (is_grade_a ? "Tự tin Full Size" : "Hạ 50% Volume")
     alert(alert_msg, alert.freq_once_per_bar_close)
 
 alertcondition(valid_buy, title="🟢 Báo Tín Hiệu MUA (BUY)", message="🟢 TNDUCK System: TÍN HIỆU MUA {{ticker}} tại giá {{close}}")
