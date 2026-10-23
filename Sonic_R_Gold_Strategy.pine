@@ -24,10 +24,11 @@ poc_step    = input.float(0.5, "Bước chia giá POC ($)", options=[0.25, 0.5, 
 
 grp_sig     = "=== 5. QUẢN TRỊ RỦI RO & PHƯƠNG THỨC TP/SL ==="
 tp_mode     = input.string("🎯 Tự Động Theo POC & Cản", "Phương Thức Chốt Lời TP", options=["🎯 Tự Động Theo POC & Cản", "📏 Tỷ Lệ R:R Cố Định"], group=grp_sig)
+sl_mode     = input.string("🤖 Tự Động Co Giãn Theo Khung (Dynamic ATR)", "Chế Độ Cắt Lỗ SL", options=["🤖 Tự Động Co Giãn Theo Khung (Dynamic ATR)", "📏 Cố Định ($)"], group=grp_sig)
 allow_ping  = input.bool(true, "Bật Đánh 2 Đầu Ping-Pong Khi Sideway", group=grp_sig)
 require_2bar= input.bool(true, "Bắt Buộc Xác Nhận 2 Cây Nến", group=grp_sig)
 filter_kz   = input.bool(false, "Bật Lá Chắn Phiên Âu/Mỹ (Tắt để test mọi khung giờ)", group=grp_sig)
-sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Cơ Bản (Giá Vàng $)", minval=1.0, step=0.5, group=grp_sig)
+sl_fixed_pts= input.float(4.0, "Mức Cắt Lỗ Cơ Bản ($)", minval=1.0, step=0.5, group=grp_sig)
 min_rr_ratio= input.float(1.5, "Tỷ Lệ R:R Tối Thiểu (Chống Kèo R:R Xấu)", minval=1.0, step=0.1, group=grp_sig)
 rr_ratio    = input.float(2.0, "Tỷ Lệ Ăn Lời R:R Chuẩn", minval=1.0, step=0.5, group=grp_sig)
 
@@ -172,8 +173,10 @@ plot(show_poc ? cur_poc_val : na, "POC Hôm Nay", color=color.new(#f59e0b, 20), 
 // ==============================================================================
 // 5. ĐIỀU KIỆN KÍCH HOẠT LỆNH (ĐỒNG BỘ 100% VỚI BẢN INDICATOR)
 // ==============================================================================
-h1_close = request.security(syminfo.tickerid, "60", close[1], barmerge.gaps_off, barmerge.lookahead_off)
-h1_ema   = request.security(syminfo.tickerid, "60", ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
+// MTF Filter: Tự động chọn khung lớn hơn để lọc xu hướng (không lấy khung nhỏ lọc khung lớn)
+string mtf_htf = timeframe.isintraday and timeframe.multiplier < 60 ? "60" : (timeframe.period == "60" ? "240" : "D")
+h1_close = request.security(syminfo.tickerid, mtf_htf, close[1], barmerge.gaps_off, barmerge.lookahead_off)
+h1_ema   = request.security(syminfo.tickerid, mtf_htf, ta.ema(close, 89)[1], barmerge.gaps_off, barmerge.lookahead_off)
 mtf_h1   = na(h1_close) or na(h1_ema) or (h1_close > h1_ema)
 
 atr_val         = ta.atr(14)
@@ -183,6 +186,12 @@ min_candle_size = nz(atr_val * 0.25, syminfo.mintick * 10)
 body_size       = math.abs(close - open)
 lower_wick      = math.min(open, close) - low
 upper_wick      = high - math.max(open, close)
+
+// Tính toán độ rộng SL linh hoạt: M5: ~3.5-4.5$, M15: ~6.0-8.5$, H1: ~12-16$
+float dynamic_sl_dist = sl_fixed_pts
+if sl_mode == "🤖 Tự Động Co Giãn Theo Khung (Dynamic ATR)"
+    float atr_scaled = nz(atr_val, 2.5) * 1.5
+    dynamic_sl_dist := math.max(atr_scaled, 3.5)
 
 is_pin_buy      = candle_range >= min_candle_size and lower_wick >= body_size * 1.2 and lower_wick >= candle_range * 0.4
 is_engulf_buy   = close > open and close > high[1] and candle_range >= min_candle_size and (na(volume) or volume > vol_ma20)
@@ -204,8 +213,8 @@ float active_sup = not na(cur_sup_price) ? cur_sup_price : (not na(day_low_price
 dist_res = not na(active_res) ? math.max(0.0, active_res - close) : na
 dist_sup = not na(active_sup) ? math.max(0.0, close - active_sup) : na
 
-has_room_buy  = na(dist_res) or (dist_res >= sl_fixed_pts * 1.1)
-has_room_sell = na(dist_sup) or (dist_sup >= sl_fixed_pts * 1.1)
+has_room_buy  = na(dist_res) or (dist_res >= dynamic_sl_dist * 1.1)
+has_room_sell = na(dist_sup) or (dist_sup >= dynamic_sl_dist * 1.1)
 
 in_london_kz  = not na(time(timeframe.period, "0700-1100:1234567", "UTC"))
 in_newyork_kz = not na(time(timeframe.period, "1230-1600:1234567", "UTC"))
@@ -237,8 +246,12 @@ c2c_h = request.security(syminfo.tickerid, c2c_tf, high[1], barmerge.gaps_off, b
 c2c_l = request.security(syminfo.tickerid, c2c_tf, low[1], barmerge.gaps_off, barmerge.lookahead_off)
 c2c_mid = not na(c2c_h) and not na(c2c_l) ? (c2c_h + c2c_l) * 0.5 : na
 
-bool c2c_bull_sweep = show_c2c and not na(c2c_l) and low < c2c_l and close > c2c_l and (close > open)
-bool c2c_bear_sweep = show_c2c and not na(c2c_h) and high > c2c_h and close < c2c_h and (close < open)
+// Chỉ kích hoạt C2C trên khung Intraday (<= 30m) để áp dụng đúng bản chất CRT (Lấy biên H4 đánh trên M1-M30)
+bool is_c2c_tf_valid = timeframe.isintraday and (timeframe.multiplier <= 30)
+
+// Bộ lọc chống bắt dao rơi: C2C Sweep BẮT BUỘC không ngược dốc dải Rồng, tôn trọng giờ phiên và có đủ biên độ
+bool c2c_bull_sweep = show_c2c and is_c2c_tf_valid and not na(c2c_l) and low < c2c_l and close > c2c_l and (close > open) and not dragon_bearish and close >= ema_low and time_allowed and has_room_buy
+bool c2c_bear_sweep = show_c2c and is_c2c_tf_valid and not na(c2c_h) and high > c2c_h and close < c2c_h and (close < open) and not dragon_bullish and close <= ema_high and time_allowed and has_room_sell
 
 buy_trigger  = trend_buy_trigger or safe_ping_buy or c2c_bull_sweep
 sell_trigger = trend_sell_trigger or safe_ping_sell or c2c_bear_sweep
@@ -269,10 +282,10 @@ if valid_buy and strategy.position_size == 0
     strat_hit_tp1     := false
     
     // Tính SL thông minh
-    if not na(cur_sup_price) and cur_sup_price < close and (close - cur_sup_price <= sl_fixed_pts * 1.5)
+    if not na(cur_sup_price) and cur_sup_price < close and (close - cur_sup_price <= dynamic_sl_dist * 1.5)
         strat_sl_price := cur_sup_price - 1.5
     else
-        strat_sl_price := close - sl_fixed_pts
+        strat_sl_price := close - dynamic_sl_dist
         
     float sl_dist     = math.abs(close - strat_sl_price)
     float min_tp_dist = sl_dist * min_rr_ratio
@@ -303,10 +316,10 @@ else if valid_sell and strategy.position_size == 0
     strat_hit_tp1     := false
     
     // Tính SL thông minh
-    if not na(cur_res_price) and cur_res_price > close and (cur_res_price - close <= sl_fixed_pts * 1.5)
+    if not na(cur_res_price) and cur_res_price > close and (cur_res_price - close <= dynamic_sl_dist * 1.5)
         strat_sl_price := cur_res_price + 1.5
     else
-        strat_sl_price := close + sl_fixed_pts
+        strat_sl_price := close + dynamic_sl_dist
         
     float sl_dist     = math.abs(strat_sl_price - close)
     float min_tp_dist = sl_dist * min_rr_ratio
